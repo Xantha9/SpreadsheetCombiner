@@ -1,1 +1,8 @@
 # Add any directories, files, or patterns you don't want to be tracked by version control
+
+node_modules/
+resources/
+.eslintrc.json
+.tags1
+package-lock.json
+save-commands.json
