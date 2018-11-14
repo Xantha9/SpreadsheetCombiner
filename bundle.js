@@ -1,11 +1,10 @@
-var $ = require("jquery"); // eslint-disable-line
-var Papa = require('papaparse'); // eslint-disable-line
-// var bootstrap = require("bootstrap"); // eslint-disable-line
+let $ = require("jquery"); // eslint-disable-line
+let Papa = require('papaparse'); // eslint-disable-line
+// let bootstrap = require("bootstrap"); // eslint-disable-line
 
-var config = buildConfig();
-var inputType = "string";
-var stepped = 0, rowCount = 0, errorCount = 0, firstError;
-var start, end;
+let config = buildConfig();
+let stepped = 0, rowCount = 0, errorCount = 0, firstError;
+let start, end;
 
 $( document ).ready(function() {
     $("#submit").click(function() {
@@ -13,7 +12,6 @@ $( document ).ready(function() {
             alert("Please choose at least one file to parse.");
             return enableButton();
         }
-
         Papa.parse($("#files")[0].files[0], config);
     });
 });
@@ -47,7 +45,7 @@ function buildConfig()
         comments: $("#comments").val(),
         complete: completeFn,
         error: errorFn,
-        download: inputType == "remote"
+        download: false
     };
 }
 
@@ -86,6 +84,21 @@ function completeFn(results)
 
     // icky hack
     setTimeout(enableButton, 100);
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    for (var i = 0; i < results.data.length; i++) {
+        let row = results.data[i].join(",");
+        csvContent += row + "\r\n";
+    }
+    // let encodedUri = encodeURI(csvContent);
+    // window.open(encodedUri);
+
+    let encodedUri = encodeURI(csvContent);
+    let link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "combined.csv");
+    document.body.appendChild(link); // Required for FF
+    link.click();
 }
 
 function errorFn(err, file)
