@@ -5834,43 +5834,31 @@ let Papa = require('papaparse'); // eslint-disable-line
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
 let config = buildConfig();
-let stepped = 0, rowCount = 0, errorCount = 0, firstError;
-let start, end;
+let i;
+let headings = [], numberHeadings = {}, data = {};
 
 $( document ).ready(function() {
     $("#submit").click(function() {
-        if (!$("#files")[0].files.length) {
+        let files = $("#files")[0].files;
+        if (!files.length) {
             alert("Please choose at least one file to parse.");
             return enableButton();
         }
-        Papa.parse($("#files")[0].files[0], config);
+
+        for (i = 0; i < files.length; i++) {
+            Papa.parse(files[i], config);
+        }
     });
 });
-
-function printStats(msg)
-{
-    if (msg)
-        console.log(msg);
-    console.log("       Time:", (end-start || "(Unknown; your browser does not support the Performance API)"), "ms");
-    console.log("  Row count:", rowCount);
-    if (stepped)
-        console.log("    Stepped:", stepped);
-    console.log("     Errors:", errorCount);
-    if (errorCount)
-        console.log("First error:", firstError);
-}
-
-
 
 function buildConfig()
 {
     return {
         delimiter: $("#delimiter").val(),
-        header: $("#header").prop("checked"),
+        headings: $("#headings").prop("checked"),
         dynamicTyping: $("#dynamicTyping").prop("checked"),
         skipEmptyLines: $("#skipEmptyLines").prop("checked"),
         preview: parseInt($("#preview").val() || 0),
-        step: $("#stream").prop("checked") ? stepFn : undefined,
         encoding: $("#encoding").val(),
         worker: $("#worker").prop("checked"),
         comments: $("#comments").val(),
@@ -5880,49 +5868,19 @@ function buildConfig()
     };
 }
 
-function stepFn(results, parser)
-{
-    stepped++;
-    if (results)
-    {
-        if (results.data)
-            rowCount += results.data.length;
-        if (results.errors)
-        {
-            errorCount += results.errors.length;
-            firstError = firstError || results.errors[0];
-        }
-    }
-}
-
 function completeFn(results)
 {
-    end = now();
-
-    if (results && results.errors)
-    {
-        if (results.errors)
-        {
-            errorCount = results.errors.length;
-            firstError = results.errors[0];
-        }
-        if (results.data && results.data.length > 0)
-            rowCount = results.data.length;
-    }
-
-    printStats("Parse complete");
-    console.log("    Results:", results);
-
     // icky hack
     setTimeout(enableButton, 100);
 
+    readData(results.data, headings, data);
+
+    // Return file to user
     let csvContent = "data:text/csv;charset=utf-8,";
-    for (var i = 0; i < results.data.length; i++) {
+    for (i = 0; i < results.data.length; i++) {
         let row = results.data[i].join(",");
         csvContent += row + "\r\n";
     }
-    // let encodedUri = encodeURI(csvContent);
-    // window.open(encodedUri);
 
     let encodedUri = encodeURI(csvContent);
     let link = document.createElement("a");
@@ -5932,9 +5890,49 @@ function completeFn(results)
     link.click();
 }
 
+// TODO: handle empty case
+function readData(rawData) {
+
+    for (i = 0; i < rawData[0].length; i++) {
+        let heading = rawData[0][i];
+
+        if (numberHeadings[heading] == null) {
+            numberHeadings[heading] = 1;
+            headings.push(heading);
+        }
+    }
+
+    for (let row = 1; row < rawData.length; row++) {
+        if (data[rawData[row][0]] == null) {
+            data[rawData[row][0]] = {};
+        }
+
+        for (let col = 1; col < rawData[row].length; col++) {
+            let entry = data[rawData[row][0]][rawData[0][col]];
+            let newEntry = rawData[row][col];
+
+            if (entry == null) {
+                data[rawData[row][0]][rawData[0][col]] = newEntry;
+            }
+            else if (numberHeadings[rawData[0][col]] === 1) {
+                if (entry != newEntry) {
+                    data[rawData[row][0]][rawData[0][col]] = [entry, newEntry];
+                    numberHeadings[rawData[0][col]]++;
+                }
+            }
+            else {
+                if (!entry.includes(newEntry)) {
+                    data[rawData[row][0]][rawData[0][col]].push(newEntry);
+                    numberHeadings[rawData[0][col]]++;
+                }
+            }
+        }
+    }
+    console.log("data", data);
+}
+
 function errorFn(err, file)
 {
-    end = now();
     console.log("ERROR:", err, file);
     enableButton();
 }
@@ -5942,13 +5940,6 @@ function errorFn(err, file)
 function enableButton()
 {
     $("#submit").prop("disabled", false);
-}
-
-function now()
-{
-    return typeof window.performance !== "undefined"
-        ? window.performance.now()
-        : 0;
 }
 
 },{"jquery":31,"papaparse":32}],31:[function(require,module,exports){
