@@ -2,16 +2,27 @@ let $ = require("jquery"); // eslint-disable-line
 let Papa = require('papaparse'); // eslint-disable-line
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
-let config = buildConfig();
-let i;
+let i, j;
 let headings = [], numberHeadings = {}, data = {};
+let config = {
+    delimiter: $("#delimiter").val(),
+    headings: $("#headings").prop("checked"),
+    dynamicTyping: $("#dynamicTyping").prop("checked"),
+    skipEmptyLines: $("#skipEmptyLines").prop("checked"),
+    preview: parseInt($("#preview").val() || 0),
+    encoding: $("#encoding").val(),
+    worker: $("#worker").prop("checked"),
+    comments: $("#comments").val(),
+    complete: completeFn,
+    error: errorFn,
+    download: false
+};
 
 $( document ).ready(function() {
     $("#submit").click(function() {
         let files = $("#files")[0].files;
         if (!files.length) {
             alert("Please choose at least one file to parse.");
-            return enableButton();
         }
 
         for (i = 0; i < files.length; i++) {
@@ -20,35 +31,30 @@ $( document ).ready(function() {
     });
 });
 
-function buildConfig()
-{
-    return {
-        delimiter: $("#delimiter").val(),
-        headings: $("#headings").prop("checked"),
-        dynamicTyping: $("#dynamicTyping").prop("checked"),
-        skipEmptyLines: $("#skipEmptyLines").prop("checked"),
-        preview: parseInt($("#preview").val() || 0),
-        encoding: $("#encoding").val(),
-        worker: $("#worker").prop("checked"),
-        comments: $("#comments").val(),
-        complete: completeFn,
-        error: errorFn,
-        download: false
-    };
-}
-
 function completeFn(results)
 {
-    // icky hack
-    setTimeout(enableButton, 100);
-
-    readData(results.data, headings, data);
+    readData(results.data);
 
     // Return file to user
     let csvContent = "data:text/csv;charset=utf-8,";
-    for (i = 0; i < results.data.length; i++) {
-        let row = results.data[i].join(",");
-        csvContent += row + "\r\n";
+    let csvrow = "";
+    for (i = 0; i < headings.length - 1; i++) {
+        csvrow += headings[i];
+        csvrow += ", ".repeat(numberHeadings[headings[i]]);
+    }
+
+    csvContent += csvrow + headings[headings.length - 1] + "\r\n";
+
+    for (let entry in data) {
+        if (data.hasOwnProperty(entry)) {
+            csvrow = "";
+            for (i = 0; i < headings.length; i++) {
+                csvrow += headings[i];
+                csvrow += ", ".repeat(numberHeadings[headings[i]]);
+            }
+
+            csvContent += csvrow + "\r\n";
+        }
     }
 
     let encodedUri = encodeURI(csvContent);
@@ -100,13 +106,6 @@ function readData(rawData) {
     console.log("data", data);
 }
 
-function errorFn(err, file)
-{
+function errorFn(err, file) {
     console.log("ERROR:", err, file);
-    enableButton();
-}
-
-function enableButton()
-{
-    $("#submit").prop("disabled", false);
 }
