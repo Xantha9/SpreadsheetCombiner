@@ -4,10 +4,10 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.8	//
-let.delimiter	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^    delimiter: $("#delimiter").val(),$/;"	property	line:9
-completeFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function completeFn()$/;"	function	line:36
-completeFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function completeFn()$/;"	function	line:36
-readData	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function readData(results) {$/;"	function	line:70
-readData	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function readData(results) {$/;"	function	line:70
-errorFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function errorFn(err, file) {$/;"	function	line:109
-errorFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function errorFn(err, file) {$/;"	function	line:109
+let.delimiter	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^    delimiter: $("#delimiter").val(),$/;"	property	line:10
+returnResult	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function returnResult()$/;"	function	line:43
+returnResult	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function returnResult()$/;"	function	line:43
+readData	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function readData(results) {$/;"	function	line:88
+readData	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function readData(results) {$/;"	function	line:88
+errorFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function errorFn(err, file) {$/;"	function	line:146
+errorFn	C:\Users\mitch\Documents\Programming\spreadsheetcombiner.bitbucket.io\bundle.js	/^function errorFn(err, file) {$/;"	function	line:146

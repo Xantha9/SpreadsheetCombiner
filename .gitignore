@@ -6,3 +6,4 @@ resources/
 .tags1
 package-lock.json
 save-commands.json
+*.csv

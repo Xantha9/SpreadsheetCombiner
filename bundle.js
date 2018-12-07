@@ -5,59 +5,77 @@ let Papa = require('papaparse'); // eslint-disable-line
 // Declare universal
 let headings = [], numberHeadings = {}, data = {};
 
+// Define parse behaviour
 let config = {
-    delimiter: $("#delimiter").val(),
-    headings: $("#headings").prop("checked"),
-    dynamicTyping: $("#dynamicTyping").prop("checked"),
-    skipEmptyLines: $("#skipEmptyLines").prop("checked"),
-    preview: parseInt($("#preview").val() || 0),
-    encoding: $("#encoding").val(),
-    worker: $("#worker").prop("checked"),
-    comments: $("#comments").val(),
+    skipEmptyLines: true,
     complete: readData,
     error: errorFn,
     download: false
 };
 
 $( document ).ready(function() {
+    // Trigger combines and return result on click
     $("#submit").click(function() {
         let files = $("#files")[0].files;
+
+        // Check for input
         if (!files.length) {
             alert("Please choose at least one file to parse.");
         }
+        else {
+            // Read in data with 'complete function', readData
+            for (let i = 0; i < files.length; i++) {
+                Papa.parse(files[i], config);
+            }
 
-        for (let i = 0; i < files.length; i++) {
-            Papa.parse(files[i], config);
+            returnResult(data);
         }
-        completeFn(data);
     });
 });
 
-function completeFn()
-{
-    // Return file to user
+function returnResult() {
+    // Define filetype
     let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Title row
     let csvrow = "";
+
+    // Iterate over headings
     for (let i = 0; i < headings.length - 1; i++) {
         csvrow += headings[i];
+
+        // Add extra columns for conflicts
         csvrow += ",".repeat(numberHeadings[headings[i]]);
     }
 
+    // Add last column and add new line
     csvContent += csvrow + headings[headings.length - 1] + "\r\n";
 
+    // Iterate over remaining rows
     for (let row in data) {
         if (data.hasOwnProperty(row)) {
             csvrow = row;
+
+            // Iterate over columns
             for (let col in data[row]) {
                 if (data[row].hasOwnProperty(col)) {
                     csvrow += "," + data[row][col];
+
+                    // Add extra columns for conflicts
+                    if (data[row][col].length == null) {
+                        csvrow += ",".repeat(numberHeadings[col] - 1);
+                    }
+                    else {
+                        csvrow += ",".repeat(numberHeadings[col] - data[row][col].length);
+                    }
                 }
             }
-
         }
+        // Add new line
         csvContent += csvrow + "\r\n";
     }
 
+    // Download file
     let encodedUri = encodeURI(csvContent);
     let link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -69,37 +87,56 @@ function completeFn()
 // TODO: handle empty case
 function readData(results) {
     let rawData = results.data;
+    let identifier = 0;
+
+    // Iterate over first row
     for (let i = 0; i < rawData[0].length; i++) {
+
         let heading = rawData[0][i];
 
+        // Check if heading has been found
         if (numberHeadings[heading] == null) {
+            // Add to heading list and make number 1
             numberHeadings[heading] = 1;
             headings.push(heading);
         }
+        else if (heading == headings[0]) {
+            // TODO: multiple columns of unique
+            identifier = i;
+        }
     }
 
+    // Iterate over rows
     for (let row = 1; row < rawData.length; row++) {
-        if (data[rawData[row][0]] == null) {
-            data[rawData[row][0]] = {};
+        // If entry does not exist yet, create entry
+        if (data[rawData[row][identifier]] == null) {
+            data[rawData[row][identifier]] = {};
         }
 
-        for (let col = 1; col < rawData[row].length; col++) {
-            let entry = data[rawData[row][0]][rawData[0][col]];
-            let newEntry = rawData[row][col];
+        // Iterate over columns
+        for (let col = 0; col < rawData[row].length; col++) {
+            if (col != identifier) {
+                let entry = data[rawData[row][identifier]][rawData[0][col]];
+                let newEntry = rawData[row][col];
 
-            if (entry == null) {
-                data[rawData[row][0]][rawData[0][col]] = newEntry;
-            }
-            else if (numberHeadings[rawData[0][col]] === 1) {
-                if (entry != newEntry) {
-                    data[rawData[row][0]][rawData[0][col]] = [entry, newEntry];
-                    numberHeadings[rawData[0][col]]++;
+                // If current entry does not exist set equal to new entry
+                if (entry == null) {
+                    data[rawData[row][identifier]][rawData[0][col]] = newEntry;
                 }
-            }
-            else {
-                if (!entry.includes(newEntry)) {
-                    data[rawData[row][0]][rawData[0][col]].push(newEntry);
-                    numberHeadings[rawData[0][col]]++;
+
+                // Else if one exists replace with array, if not duplicate
+                else if (numberHeadings[rawData[0][col]] === 1) {
+                    if (entry != newEntry) {
+                        data[rawData[row][identifier]][rawData[0][col]] = [entry, newEntry];
+                        numberHeadings[rawData[0][col]]++;
+                    }
+                }
+                // If array already exists, check if not duplicate, then add to array
+                else {
+                    if (!entry.includes(newEntry)) {
+                        data[rawData[row][identifier]][rawData[0][col]].push(newEntry);
+                        numberHeadings[rawData[0][col]]++;
+                    }
                 }
             }
         }
@@ -107,5 +144,6 @@ function readData(results) {
 }
 
 function errorFn(err, file) {
+    // Print error
     console.log("ERROR:", err, file);
 }
