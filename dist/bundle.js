@@ -5836,14 +5836,6 @@ let Papa = require('papaparse'); // eslint-disable-line
 // Declare universal
 let headings = [], numberHeadings = {}, data = {};
 
-// Define parse behaviour
-let config = {
-    skipEmptyLines: true,
-    complete: readData,
-    error: errorFn,
-    download: false
-};
-
 $( document ).ready(function() {
     // Trigger combines and return result on click
     $("#submit").click(function() {
@@ -5855,11 +5847,21 @@ $( document ).ready(function() {
         }
         else {
             // Read in data with 'complete function', readData
-            for (let i = 0; i < files.length; i++) {
-                Papa.parse(files[i], config);
+            for (let i = 0; i < files.length - 1; i++) {
+                Papa.parse(files[i], {
+                    skipEmptyLines: true,
+                    complete: readData,
+                    error: errorFn,
+                    download: false
+                });
             }
 
-            returnResult(data);
+            Papa.parse(files[files.length - 1], {
+                skipEmptyLines: true,
+                complete: finalFile,
+                error: errorFn,
+                download: false
+            });
         }
     });
 });
@@ -5878,7 +5880,7 @@ function returnResult() {
         // Add extra columns for conflicts
         csvrow += ",".repeat(numberHeadings[headings[i]]);
     }
-
+    console.log(headings);
     // Add last column and add new line
     csvContent += csvrow + headings[headings.length - 1] + "\r\n";
 
@@ -5972,6 +5974,10 @@ function readData(results) {
             }
         }
     }
+}
+function finalFile(results) {
+    readData(results);
+    returnResult();
 }
 
 function errorFn(err, file) {
