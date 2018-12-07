@@ -123,26 +123,28 @@ function readData(results) {
             // Iterate over columns
             for (let col = 0; col < rawData[row].length; col++) {
                 if (col != identifier) {
-                    let entry = data[rawData[row][identifier]][rawData[0][col]];
                     let newEntry = rawData[row][col];
+                    if (newEntry != "") {
+                        let entry = data[rawData[row][identifier]][rawData[0][col]];
 
-                    // If current entry does not exist set equal to new entry
-                    if (entry == null) {
-                        data[rawData[row][identifier]][rawData[0][col]] = newEntry;
-                    }
-
-                    // Else if one exists replace with array, if not duplicate
-                    else if (numberHeadings[rawData[0][col]] === 1) {
-                        if (entry != newEntry) {
-                            data[rawData[row][identifier]][rawData[0][col]] = [entry, newEntry];
-                            numberHeadings[rawData[0][col]]++;
+                        // If current entry does not exist set equal to new entry
+                        if (entry == null) {
+                            data[rawData[row][identifier]][rawData[0][col]] = newEntry;
                         }
-                    }
-                    // If array already exists, check if not duplicate, then add to array
-                    else {
-                        if (!entry.includes(newEntry)) {
-                            data[rawData[row][identifier]][rawData[0][col]].push(newEntry);
-                            numberHeadings[rawData[0][col]]++;
+
+                        // Else if one exists replace with array, if not duplicate
+                        else if (numberHeadings[rawData[0][col]] === 1) {
+                            if (entry != newEntry) {
+                                data[rawData[row][identifier]][rawData[0][col]] = [entry, newEntry];
+                                numberHeadings[rawData[0][col]]++;
+                            }
+                        }
+                        // If array already exists, check if not duplicate, then add to array
+                        else {
+                            if (!entry.includes(newEntry)) {
+                                data[rawData[row][identifier]][rawData[0][col]].push(newEntry);
+                                numberHeadings[rawData[0][col]]++;
+                            }
                         }
                     }
                 }
