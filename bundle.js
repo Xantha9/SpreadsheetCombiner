@@ -2,8 +2,9 @@ let $ = require("jquery"); // eslint-disable-line
 let Papa = require('papaparse'); // eslint-disable-line
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
-let i, j;
+// Declare universal
 let headings = [], numberHeadings = {}, data = {};
+
 let config = {
     delimiter: $("#delimiter").val(),
     headings: $("#headings").prop("checked"),
@@ -13,7 +14,7 @@ let config = {
     encoding: $("#encoding").val(),
     worker: $("#worker").prop("checked"),
     comments: $("#comments").val(),
-    complete: completeFn,
+    complete: readData,
     error: errorFn,
     download: false
 };
@@ -25,36 +26,36 @@ $( document ).ready(function() {
             alert("Please choose at least one file to parse.");
         }
 
-        for (i = 0; i < files.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             Papa.parse(files[i], config);
         }
+        completeFn(data);
     });
 });
 
-function completeFn(results)
+function completeFn()
 {
-    readData(results.data);
-
     // Return file to user
     let csvContent = "data:text/csv;charset=utf-8,";
     let csvrow = "";
-    for (i = 0; i < headings.length - 1; i++) {
+    for (let i = 0; i < headings.length - 1; i++) {
         csvrow += headings[i];
-        csvrow += ", ".repeat(numberHeadings[headings[i]]);
+        csvrow += ",".repeat(numberHeadings[headings[i]]);
     }
 
     csvContent += csvrow + headings[headings.length - 1] + "\r\n";
 
-    for (let entry in data) {
-        if (data.hasOwnProperty(entry)) {
-            csvrow = "";
-            for (i = 0; i < headings.length; i++) {
-                csvrow += headings[i];
-                csvrow += ", ".repeat(numberHeadings[headings[i]]);
+    for (let row in data) {
+        if (data.hasOwnProperty(row)) {
+            csvrow = row;
+            for (let col in data[row]) {
+                if (data[row].hasOwnProperty(col)) {
+                    csvrow += "," + data[row][col];
+                }
             }
 
-            csvContent += csvrow + "\r\n";
         }
+        csvContent += csvrow + "\r\n";
     }
 
     let encodedUri = encodeURI(csvContent);
@@ -66,9 +67,9 @@ function completeFn(results)
 }
 
 // TODO: handle empty case
-function readData(rawData) {
-
-    for (i = 0; i < rawData[0].length; i++) {
+function readData(results) {
+    let rawData = results.data;
+    for (let i = 0; i < rawData[0].length; i++) {
         let heading = rawData[0][i];
 
         if (numberHeadings[heading] == null) {
@@ -103,7 +104,6 @@ function readData(rawData) {
             }
         }
     }
-    console.log("data", data);
 }
 
 function errorFn(err, file) {
