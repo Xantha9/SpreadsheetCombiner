@@ -5834,7 +5834,7 @@ let Papa = require('papaparse'); // eslint-disable-line
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
 // Declare universal
-let headings = [], numberHeadings = {}, data = {};
+let headings = [], numberHeadings = {}, data = {}, identifier = "";
 
 $( document ).ready(function() {
     // Trigger combines and return result on click
@@ -5846,7 +5846,7 @@ $( document ).ready(function() {
             alert("Please choose at least one file to parse.");
         }
         else {
-            // Read in data with 'complete function', readData
+            // Read in nonfinal data
             for (let i = 0; i < files.length - 1; i++) {
                 Papa.parse(files[i], {
                     skipEmptyLines: true,
@@ -5856,6 +5856,7 @@ $( document ).ready(function() {
                 });
             }
 
+            // Read final file, then compose csv
             Papa.parse(files[files.length - 1], {
                 skipEmptyLines: true,
                 complete: finalFile,
@@ -5889,23 +5890,48 @@ function returnResult() {
         // Iterate over remaining rows
         for (let row in data) {
             if (data.hasOwnProperty(row)) {
+                // Add identifier
                 csvrow = row;
 
-                // Iterate over columns
-                for (let col in data[row]) {
-                    if (data[row].hasOwnProperty(col)) {
-                        csvrow += "," + data[row][col];
+                // Iterate over remaining columns
+                for (let i = 1; i < headings.length; i++) {
+                    csvrow += ",";
 
-                        // Add extra columns for conflicts
-                        if (data[row][col].length == null) {
-                            csvrow += ",".repeat(numberHeadings[col] - 1);
+                    // Get entry
+                    let entry = data[row][headings[i]];
+
+                    // If entry exists
+                    if (entry != null) {
+                        if (typeof(entry) === "string") {
+                            // Add entry and add commas for duplicates
+                            csvrow += entry;
+                            csvrow += ",".repeat(numberHeadings[headings[i]] - 1);
                         }
+
+                        // Entry is an array
                         else {
-                            csvrow += ",".repeat(numberHeadings[col] - data[row][col].length);
+                            // Add first entry
+                            csvrow += entry[0];
+
+                            // Add remaining entries
+                            for (let j = 1; j < entry.length; j++) {
+                                csvrow += "," + entry[j];
+                            }
+
+                            // Add commas for duplicates, accounting for duplicates already added
+                            csvrow += ",".repeat(numberHeadings[headings[i]] - entry.length);
                         }
                     }
+
+                    // Add commas if entry does not exist
+                    else {
+                        csvrow += ",".repeat(numberHeadings[headings[i]] - 1);
+                    }
+
+
                 }
             }
+
             // Add new line
             csvContent += csvrow + "\r\n";
         }
@@ -5923,14 +5949,27 @@ function returnResult() {
 
 function readData(results) {
     let rawData = results.data;
-    let identifier = 0;
+    let idCol = [];
 
     // Proceed if csv is not empty
     if (rawData.length > 0) {
+        // Set identifier
+        if (identifier === "") {
+            identifier = rawData[0][0];
+        }
+
         // Iterate over first row
         for (let i = 0; i < rawData[0].length; i++) {
-
             let heading = rawData[0][i];
+
+            // TODO: first heading is blank? Throw error
+            // Handle empty heading
+            heading = findLastHead(heading, rawData[0], i);
+
+            // Keep track of which columns are identifiers
+            if (heading === identifier) {
+                idCol.push(i);
+            }
 
             // Check if heading has been found
             if (numberHeadings[heading] == null) {
@@ -5938,67 +5977,115 @@ function readData(results) {
                 numberHeadings[heading] = 1;
                 headings.push(heading);
             }
-            else if (heading == headings[0]) {
-                // TODO: multiple columns of unique
-                identifier = i;
+        }
+
+        // Create list of non unique columns
+        let nonUnique = [];
+
+        let i = 0; // Iterate over headings
+        let j = 0; // Iterate through identifying columns
+
+        while (i < rawData[0].length) {
+            // If column is not identifying, add to list
+            if (idCol[j] !== i) {
+                nonUnique.push(i);
             }
+
+            // If column is identifying, iterate to next identifying
+            else {
+                j++;
+            }
+            i++;
         }
 
         // Iterate over rows
         for (let row = 1; row < rawData.length; row++) {
-            // If entry does not exist yet, create entry
-            if (data[rawData[row][identifier]] == null) {
-                data[rawData[row][identifier]] = {};
+            let entryName = rawData[row][idCol[0]];
+
+            // If entry does not exist yet, create entry for first identifier
+            if (data[entryName] == null) {
+                data[entryName] = {};
             }
 
             // Iterate over columns
-            for (let col = 0; col < rawData[row].length; col++) {
-                if (col != identifier) {
-                    let newEntry = rawData[row][col];
-                    if (newEntry != "") {
-                        let entry = data[rawData[row][identifier]][rawData[0][col]];
+            for (let col = 0; col < nonUnique.length; col++) {
+                let colHead = rawData[0][nonUnique[col]];
+                let newEntry = rawData[row][nonUnique[col]];
 
-                        // If current entry does not exist set equal to new entry
-                        if (entry == null) {
-                            data[rawData[row][identifier]][rawData[0][col]] = newEntry;
-                        }
+                // If the heading is blank, find the last heading
+                if (colHead === "") {
+                    colHead = findLastHead(colHead, rawData[0], nonUnique[col]);
+                }
 
-                        // Else if one exists replace with array, if not duplicate
-                        else if (numberHeadings[rawData[0][col]] === 1) {
-                            if (entry != newEntry) {
-                                data[rawData[row][identifier]][rawData[0][col]] = [entry, newEntry];
-                                numberHeadings[rawData[0][col]]++;
-                            }
+                // If newEntry is not blank
+                if (newEntry !== "") {
+                    let entry = data[entryName][colHead];
+
+                    // If current entry does not exist set equal to new entry
+                    if (entry == null) {
+                        data[entryName][colHead] = newEntry;
+                    }
+
+                    // Else if one exists replace with array, if not duplicate
+                    else if (numberHeadings[colHead] === 1) {
+                        if (entry !== newEntry) {
+                            data[entryName][colHead] = [entry, newEntry];
+                            numberHeadings[colHead]++;
                         }
-                        // If array already exists, check if not duplicate, then add to array
-                        else {
-                            if (!entry.includes(newEntry)) {
-                                data[rawData[row][identifier]][rawData[0][col]].push(newEntry);
-                                numberHeadings[rawData[0][col]]++;
-                            }
+                    }
+
+                    // If array already exists, check if not duplicate, then add to array
+                    else {
+                        if (!entry.includes(newEntry)) {
+                            data[entryName][colHead].push(newEntry);
+                            numberHeadings[colHead]++;
                         }
                     }
                 }
             }
+
+            // Iterate over remaining identifier columns
+            for (let i = 1; i < idCol.length; i++) {
+                let copyName = rawData[row][idCol[i]];
+
+                // If column is not empty, copy object
+                if (copyName !== "") {
+                    data[copyName] = Object.assign({}, data[entryName]);
+                }
+            }
+
         }
     }
 }
+
+// Read data, then generate csv and download
 function finalFile(results) {
     readData(results);
     returnResult();
 }
 
+// Log any errors to console
 function errorFn(err, file) {
-    // Print error
     console.log("ERROR:", err, file);
 }
 
+// Determine if object has parameters
 function isEmpty(obj) {
     for(var key in obj) {
         if(obj.hasOwnProperty(key))
             return false;
     }
     return true;
+}
+
+// Iterate back through columns to find last heading
+function findLastHead(heading, headingCols, i) {
+    let j = i - 1;
+    while (heading === "") {
+        heading = headingCols[j];
+        j--;
+    }
+    return heading;
 }
 
 },{"jquery":31,"papaparse":32}],31:[function(require,module,exports){
