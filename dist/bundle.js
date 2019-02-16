@@ -5829,8 +5829,11 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],30:[function(require,module,exports){
-let $ = require("jquery"); // eslint-disable-line
-let Papa = require('papaparse'); // eslint-disable-line
+// TODO: remove jquery?
+const $ = require("jquery"); // eslint-disable-line
+const Papa = require("papaparse"); // eslint-disable-line
+const Uppy = require("@uppy/core");
+const DragDrop = require("@uppy/drag-drop");
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
 // Declare universal
@@ -5858,6 +5861,49 @@ $( document ).ready(function() {
 
             // Read final file, then compose csv
             Papa.parse(files[files.length - 1], {
+                skipEmptyLines: true,
+                complete: finalFile,
+                error: errorFn,
+                download: false
+            });
+        }
+    });
+
+    // TODO: parameters
+    const uppyTwo = new Uppy({
+        debug: true,
+        autoProceed: false,
+        // allowedFileTypes: ".csv",
+        // minNumberOfFiles: 1
+    });
+
+    uppyTwo
+        .use(DragDrop, {target: "#UppyDragDrop-Two"});
+    // .use(Tus, {endpoint: 'https://master.tus.io/files/'})
+    // .use(ProgressBar, {target: '.UppyDragDrop-Two-Progress', hideAfterFinish: false})
+
+    var uploadBtn = document.querySelector(".UppyDragDrop-Two-Upload");
+    uploadBtn.addEventListener("click", function () {
+        let files = uppyTwo.getFiles();
+
+        // TODO: not necessary?
+        // Check for input
+        if (!files.length) {
+            alert("Please choose at least one file to parse.");
+        }
+        else {
+            // Read in nonfinal data
+            for (let i = 0; i < files.length - 1; i++) {
+                Papa.parse(files[i].data, {
+                    skipEmptyLines: true,
+                    complete: readData,
+                    error: errorFn,
+                    download: false
+                });
+            }
+
+            // Read final file, then compose csv
+            Papa.parse(files[files.length - 1].data, {
                 skipEmptyLines: true,
                 complete: finalFile,
                 error: errorFn,
@@ -6088,7 +6134,2525 @@ function findLastHead(heading, headingCols, i) {
     return heading;
 }
 
-},{"jquery":31,"papaparse":32}],31:[function(require,module,exports){
+},{"@uppy/core":32,"@uppy/drag-drop":34,"jquery":51,"papaparse":54}],31:[function(require,module,exports){
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var preact = require('preact');
+var findDOMElement = require('@uppy/utils/lib/findDOMElement');
+
+/**
+ * Defer a frequent call to the microtask queue.
+ */
+function debounce(fn) {
+  var calling = null;
+  var latestArgs = null;
+  return function () {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    latestArgs = args;
+    if (!calling) {
+      calling = Promise.resolve().then(function () {
+        calling = null;
+        // At this point `args` may be different from the most
+        // recent state, if multiple calls happened since this task
+        // was queued. So we use the `latestArgs`, which definitely
+        // is the most recent call.
+        return fn.apply(undefined, latestArgs);
+      });
+    }
+    return calling;
+  };
+}
+
+/**
+ * Boilerplate that all Plugins share - and should not be used
+ * directly. It also shows which methods final plugins should implement/override,
+ * this deciding on structure.
+ *
+ * @param {object} main Uppy core object
+ * @param {object} object with plugin options
+ * @return {array | string} files or success/fail message
+ */
+module.exports = function () {
+  function Plugin(uppy, opts) {
+    _classCallCheck(this, Plugin);
+
+    this.uppy = uppy;
+    this.opts = opts || {};
+
+    this.update = this.update.bind(this);
+    this.mount = this.mount.bind(this);
+    this.install = this.install.bind(this);
+    this.uninstall = this.uninstall.bind(this);
+  }
+
+  Plugin.prototype.getPluginState = function getPluginState() {
+    var _uppy$getState = this.uppy.getState(),
+        plugins = _uppy$getState.plugins;
+
+    return plugins[this.id] || {};
+  };
+
+  Plugin.prototype.setPluginState = function setPluginState(update) {
+    var _extends2;
+
+    var _uppy$getState2 = this.uppy.getState(),
+        plugins = _uppy$getState2.plugins;
+
+    this.uppy.setState({
+      plugins: _extends({}, plugins, (_extends2 = {}, _extends2[this.id] = _extends({}, plugins[this.id], update), _extends2))
+    });
+  };
+
+  Plugin.prototype.update = function update(state) {
+    if (typeof this.el === 'undefined') {
+      return;
+    }
+
+    if (this._updateUI) {
+      this._updateUI(state);
+    }
+  };
+
+  /**
+  * Called when plugin is mounted, whether in DOM or into another plugin.
+  * Needed because sometimes plugins are mounted separately/after `install`,
+  * so this.el and this.parent might not be available in `install`.
+  * This is the case with @uppy/react plugins, for example.
+  */
+
+
+  Plugin.prototype.onMount = function onMount() {};
+
+  /**
+   * Check if supplied `target` is a DOM element or an `object`.
+   * If it’s an object — target is a plugin, and we search `plugins`
+   * for a plugin with same name and return its target.
+   *
+   * @param {String|Object} target
+   *
+   */
+
+
+  Plugin.prototype.mount = function mount(target, plugin) {
+    var _this = this;
+
+    var callerPluginName = plugin.id;
+
+    var targetElement = findDOMElement(target);
+
+    if (targetElement) {
+      this.isTargetDOMEl = true;
+
+      // API for plugins that require a synchronous rerender.
+      this.rerender = function (state) {
+        // plugin could be removed, but this.rerender is debounced below,
+        // so it could still be called even after uppy.removePlugin or uppy.close
+        // hence the check
+        if (!_this.uppy.getPlugin(_this.id)) return;
+        _this.el = preact.render(_this.render(state), targetElement, _this.el);
+      };
+      this._updateUI = debounce(this.rerender);
+
+      this.uppy.log('Installing ' + callerPluginName + ' to a DOM element');
+
+      // clear everything inside the target container
+      if (this.opts.replaceTargetContent) {
+        targetElement.innerHTML = '';
+      }
+
+      this.el = preact.render(this.render(this.uppy.getState()), targetElement);
+
+      this.onMount();
+      return this.el;
+    }
+
+    var targetPlugin = void 0;
+    if ((typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object' && target instanceof Plugin) {
+      // Targeting a plugin *instance*
+      targetPlugin = target;
+    } else if (typeof target === 'function') {
+      // Targeting a plugin type
+      var Target = target;
+      // Find the target plugin instance.
+      this.uppy.iteratePlugins(function (plugin) {
+        if (plugin instanceof Target) {
+          targetPlugin = plugin;
+          return false;
+        }
+      });
+    }
+
+    if (targetPlugin) {
+      this.uppy.log('Installing ' + callerPluginName + ' to ' + targetPlugin.id);
+      this.parent = targetPlugin;
+      this.el = targetPlugin.addTarget(plugin);
+
+      this.onMount();
+      return this.el;
+    }
+
+    this.uppy.log('Not installing ' + callerPluginName);
+    throw new Error('Invalid target option given to ' + callerPluginName + '. Please make sure that the element \n      exists on the page, or that the plugin you are targeting has been installed. Check that the <script> tag initializing Uppy \n      comes at the bottom of the page, before the closing </body> tag (see https://github.com/transloadit/uppy/issues/1042).');
+  };
+
+  Plugin.prototype.render = function render(state) {
+    throw new Error('Extend the render method to add your plugin to a DOM element');
+  };
+
+  Plugin.prototype.addTarget = function addTarget(plugin) {
+    throw new Error('Extend the addTarget method to add your plugin to another plugin\'s target');
+  };
+
+  Plugin.prototype.unmount = function unmount() {
+    if (this.isTargetDOMEl && this.el && this.el.parentNode) {
+      this.el.parentNode.removeChild(this.el);
+    }
+  };
+
+  Plugin.prototype.install = function install() {};
+
+  Plugin.prototype.uninstall = function uninstall() {
+    this.unmount();
+  };
+
+  return Plugin;
+}();
+},{"@uppy/utils/lib/findDOMElement":37,"preact":55}],32:[function(require,module,exports){
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Translator = require('@uppy/utils/lib/Translator');
+var ee = require('namespace-emitter');
+var cuid = require('cuid');
+// const throttle = require('lodash.throttle')
+var prettyBytes = require('prettier-bytes');
+var match = require('mime-match');
+var DefaultStore = require('@uppy/store-default');
+var getFileType = require('@uppy/utils/lib/getFileType');
+var getFileNameAndExtension = require('@uppy/utils/lib/getFileNameAndExtension');
+var generateFileID = require('@uppy/utils/lib/generateFileID');
+var getTimeStamp = require('@uppy/utils/lib/getTimeStamp');
+var supportsUploadProgress = require('./supportsUploadProgress');
+var Plugin = require('./Plugin'); // Exported from here.
+
+/**
+ * Uppy Core module.
+ * Manages plugins, state updates, acts as an event bus,
+ * adds/removes files and metadata.
+ */
+
+var Uppy = function () {
+  /**
+  * Instantiate Uppy
+  * @param {object} opts — Uppy options
+  */
+  function Uppy(opts) {
+    var _this = this;
+
+    _classCallCheck(this, Uppy);
+
+    var defaultLocale = {
+      strings: {
+        youCanOnlyUploadX: {
+          0: 'You can only upload %{smart_count} file',
+          1: 'You can only upload %{smart_count} files'
+        },
+        youHaveToAtLeastSelectX: {
+          0: 'You have to select at least %{smart_count} file',
+          1: 'You have to select at least %{smart_count} files'
+        },
+        exceedsSize: 'This file exceeds maximum allowed size of',
+        youCanOnlyUploadFileTypes: 'You can only upload:',
+        companionError: 'Connection with Companion failed',
+        failedToUpload: 'Failed to upload %{file}',
+        noInternetConnection: 'No Internet connection',
+        connectedToInternet: 'Connected to the Internet',
+        // Strings for remote providers
+        noFilesFound: 'You have no files or folders here',
+        selectXFiles: {
+          0: 'Select %{smart_count} file',
+          1: 'Select %{smart_count} files'
+        },
+        cancel: 'Cancel',
+        logOut: 'Log out'
+      }
+
+      // set default options
+    };var defaultOptions = {
+      id: 'uppy',
+      autoProceed: false,
+      allowMultipleUploads: true,
+      debug: false,
+      restrictions: {
+        maxFileSize: null,
+        maxNumberOfFiles: null,
+        minNumberOfFiles: null,
+        allowedFileTypes: null
+      },
+      meta: {},
+      onBeforeFileAdded: function onBeforeFileAdded(currentFile, files) {
+        return currentFile;
+      },
+      onBeforeUpload: function onBeforeUpload(files) {
+        return files;
+      },
+      locale: defaultLocale,
+      store: DefaultStore()
+
+      // Merge default options with the ones set by user
+    };this.opts = _extends({}, defaultOptions, opts);
+    this.opts.restrictions = _extends({}, defaultOptions.restrictions, this.opts.restrictions);
+
+    // i18n
+    this.translator = new Translator([defaultLocale, this.opts.locale]);
+    this.locale = this.translator.locale;
+    this.i18n = this.translator.translate.bind(this.translator);
+
+    // Container for different types of plugins
+    this.plugins = {};
+
+    this.getState = this.getState.bind(this);
+    this.getPlugin = this.getPlugin.bind(this);
+    this.setFileMeta = this.setFileMeta.bind(this);
+    this.setFileState = this.setFileState.bind(this);
+    this.log = this.log.bind(this);
+    this.info = this.info.bind(this);
+    this.hideInfo = this.hideInfo.bind(this);
+    this.addFile = this.addFile.bind(this);
+    this.removeFile = this.removeFile.bind(this);
+    this.pauseResume = this.pauseResume.bind(this);
+    this._calculateProgress = this._calculateProgress.bind(this);
+    this.updateOnlineStatus = this.updateOnlineStatus.bind(this);
+    this.resetProgress = this.resetProgress.bind(this);
+
+    this.pauseAll = this.pauseAll.bind(this);
+    this.resumeAll = this.resumeAll.bind(this);
+    this.retryAll = this.retryAll.bind(this);
+    this.cancelAll = this.cancelAll.bind(this);
+    this.retryUpload = this.retryUpload.bind(this);
+    this.upload = this.upload.bind(this);
+
+    this.emitter = ee();
+    this.on = this.on.bind(this);
+    this.off = this.off.bind(this);
+    this.once = this.emitter.once.bind(this.emitter);
+    this.emit = this.emitter.emit.bind(this.emitter);
+
+    this.preProcessors = [];
+    this.uploaders = [];
+    this.postProcessors = [];
+
+    this.store = this.opts.store;
+    this.setState({
+      plugins: {},
+      files: {},
+      currentUploads: {},
+      allowNewUpload: true,
+      capabilities: {
+        uploadProgress: supportsUploadProgress(),
+        resumableUploads: false
+      },
+      totalProgress: 0,
+      meta: _extends({}, this.opts.meta),
+      info: {
+        isHidden: true,
+        type: 'info',
+        message: ''
+      }
+    });
+
+    this._storeUnsubscribe = this.store.subscribe(function (prevState, nextState, patch) {
+      _this.emit('state-update', prevState, nextState, patch);
+      _this.updateAll(nextState);
+    });
+
+    // for debugging and testing
+    // this.updateNum = 0
+    if (this.opts.debug && typeof window !== 'undefined') {
+      window['uppyLog'] = '';
+      window[this.opts.id] = this;
+    }
+
+    this._addListeners();
+  }
+
+  Uppy.prototype.on = function on(event, callback) {
+    this.emitter.on(event, callback);
+    return this;
+  };
+
+  Uppy.prototype.off = function off(event, callback) {
+    this.emitter.off(event, callback);
+    return this;
+  };
+
+  /**
+   * Iterate on all plugins and run `update` on them.
+   * Called each time state changes.
+   *
+   */
+
+
+  Uppy.prototype.updateAll = function updateAll(state) {
+    this.iteratePlugins(function (plugin) {
+      plugin.update(state);
+    });
+  };
+
+  /**
+   * Updates state with a patch
+   *
+   * @param {object} patch {foo: 'bar'}
+   */
+
+
+  Uppy.prototype.setState = function setState(patch) {
+    this.store.setState(patch);
+  };
+
+  /**
+   * Returns current state.
+   * @return {object}
+   */
+
+
+  Uppy.prototype.getState = function getState() {
+    return this.store.getState();
+  };
+
+  /**
+  * Back compat for when uppy.state is used instead of uppy.getState().
+  */
+
+
+  /**
+  * Shorthand to set state for a specific file.
+  */
+  Uppy.prototype.setFileState = function setFileState(fileID, state) {
+    var _extends2;
+
+    if (!this.getState().files[fileID]) {
+      throw new Error('Can\u2019t set state for ' + fileID + ' (the file could have been removed)');
+    }
+
+    this.setState({
+      files: _extends({}, this.getState().files, (_extends2 = {}, _extends2[fileID] = _extends({}, this.getState().files[fileID], state), _extends2))
+    });
+  };
+
+  Uppy.prototype.resetProgress = function resetProgress() {
+    var defaultProgress = {
+      percentage: 0,
+      bytesUploaded: 0,
+      uploadComplete: false,
+      uploadStarted: false
+    };
+    var files = _extends({}, this.getState().files);
+    var updatedFiles = {};
+    Object.keys(files).forEach(function (fileID) {
+      var updatedFile = _extends({}, files[fileID]);
+      updatedFile.progress = _extends({}, updatedFile.progress, defaultProgress);
+      updatedFiles[fileID] = updatedFile;
+    });
+
+    this.setState({
+      files: updatedFiles,
+      totalProgress: 0
+    });
+
+    // TODO Document on the website
+    this.emit('reset-progress');
+  };
+
+  Uppy.prototype.addPreProcessor = function addPreProcessor(fn) {
+    this.preProcessors.push(fn);
+  };
+
+  Uppy.prototype.removePreProcessor = function removePreProcessor(fn) {
+    var i = this.preProcessors.indexOf(fn);
+    if (i !== -1) {
+      this.preProcessors.splice(i, 1);
+    }
+  };
+
+  Uppy.prototype.addPostProcessor = function addPostProcessor(fn) {
+    this.postProcessors.push(fn);
+  };
+
+  Uppy.prototype.removePostProcessor = function removePostProcessor(fn) {
+    var i = this.postProcessors.indexOf(fn);
+    if (i !== -1) {
+      this.postProcessors.splice(i, 1);
+    }
+  };
+
+  Uppy.prototype.addUploader = function addUploader(fn) {
+    this.uploaders.push(fn);
+  };
+
+  Uppy.prototype.removeUploader = function removeUploader(fn) {
+    var i = this.uploaders.indexOf(fn);
+    if (i !== -1) {
+      this.uploaders.splice(i, 1);
+    }
+  };
+
+  Uppy.prototype.setMeta = function setMeta(data) {
+    var updatedMeta = _extends({}, this.getState().meta, data);
+    var updatedFiles = _extends({}, this.getState().files);
+
+    Object.keys(updatedFiles).forEach(function (fileID) {
+      updatedFiles[fileID] = _extends({}, updatedFiles[fileID], {
+        meta: _extends({}, updatedFiles[fileID].meta, data)
+      });
+    });
+
+    this.log('Adding metadata:');
+    this.log(data);
+
+    this.setState({
+      meta: updatedMeta,
+      files: updatedFiles
+    });
+  };
+
+  Uppy.prototype.setFileMeta = function setFileMeta(fileID, data) {
+    var updatedFiles = _extends({}, this.getState().files);
+    if (!updatedFiles[fileID]) {
+      this.log('Was trying to set metadata for a file that’s not with us anymore: ', fileID);
+      return;
+    }
+    var newMeta = _extends({}, updatedFiles[fileID].meta, data);
+    updatedFiles[fileID] = _extends({}, updatedFiles[fileID], {
+      meta: newMeta
+    });
+    this.setState({ files: updatedFiles });
+  };
+
+  /**
+   * Get a file object.
+   *
+   * @param {string} fileID The ID of the file object to return.
+   */
+
+
+  Uppy.prototype.getFile = function getFile(fileID) {
+    return this.getState().files[fileID];
+  };
+
+  /**
+   * Get all files in an array.
+   */
+
+
+  Uppy.prototype.getFiles = function getFiles() {
+    var _getState = this.getState(),
+        files = _getState.files;
+
+    return Object.keys(files).map(function (fileID) {
+      return files[fileID];
+    });
+  };
+
+  /**
+  * Check if minNumberOfFiles restriction is reached before uploading.
+  *
+  * @private
+  */
+
+
+  Uppy.prototype._checkMinNumberOfFiles = function _checkMinNumberOfFiles(files) {
+    var minNumberOfFiles = this.opts.restrictions.minNumberOfFiles;
+
+    if (Object.keys(files).length < minNumberOfFiles) {
+      throw new Error('' + this.i18n('youHaveToAtLeastSelectX', { smart_count: minNumberOfFiles }));
+    }
+  };
+
+  /**
+  * Check if file passes a set of restrictions set in options: maxFileSize,
+  * maxNumberOfFiles and allowedFileTypes.
+  *
+  * @param {object} file object to check
+  * @private
+  */
+
+
+  Uppy.prototype._checkRestrictions = function _checkRestrictions(file) {
+    var _opts$restrictions = this.opts.restrictions,
+        maxFileSize = _opts$restrictions.maxFileSize,
+        maxNumberOfFiles = _opts$restrictions.maxNumberOfFiles,
+        allowedFileTypes = _opts$restrictions.allowedFileTypes;
+
+
+    if (maxNumberOfFiles) {
+      if (Object.keys(this.getState().files).length + 1 > maxNumberOfFiles) {
+        throw new Error('' + this.i18n('youCanOnlyUploadX', { smart_count: maxNumberOfFiles }));
+      }
+    }
+
+    if (allowedFileTypes) {
+      var isCorrectFileType = allowedFileTypes.filter(function (type) {
+        // if (!file.type) return false
+
+        // is this is a mime-type
+        if (type.indexOf('/') > -1) {
+          if (!file.type) return false;
+          return match(file.type, type);
+        }
+
+        // otherwise this is likely an extension
+        if (type[0] === '.') {
+          if (file.extension === type.substr(1)) {
+            return file.extension;
+          }
+        }
+      }).length > 0;
+
+      if (!isCorrectFileType) {
+        var allowedFileTypesString = allowedFileTypes.join(', ');
+        throw new Error(this.i18n('youCanOnlyUploadFileTypes') + ' ' + allowedFileTypesString);
+      }
+    }
+
+    if (maxFileSize) {
+      if (file.data.size > maxFileSize) {
+        throw new Error(this.i18n('exceedsSize') + ' ' + prettyBytes(maxFileSize));
+      }
+    }
+  };
+
+  /**
+  * Add a new file to `state.files`. This will run `onBeforeFileAdded`,
+  * try to guess file type in a clever way, check file against restrictions,
+  * and start an upload if `autoProceed === true`.
+  *
+  * @param {object} file object to add
+  */
+
+
+  Uppy.prototype.addFile = function addFile(file) {
+    var _this2 = this,
+        _extends3;
+
+    var _getState2 = this.getState(),
+        files = _getState2.files,
+        allowNewUpload = _getState2.allowNewUpload;
+
+    var onError = function onError(msg) {
+      var err = (typeof msg === 'undefined' ? 'undefined' : _typeof(msg)) === 'object' ? msg : new Error(msg);
+      _this2.log(err.message);
+      _this2.info(err.message, 'error', 5000);
+      throw err;
+    };
+
+    if (allowNewUpload === false) {
+      onError(new Error('Cannot add new files: already uploading.'));
+    }
+
+    var onBeforeFileAddedResult = this.opts.onBeforeFileAdded(file, files);
+
+    if (onBeforeFileAddedResult === false) {
+      this.log('Not adding file because onBeforeFileAdded returned false');
+      return;
+    }
+
+    if ((typeof onBeforeFileAddedResult === 'undefined' ? 'undefined' : _typeof(onBeforeFileAddedResult)) === 'object' && onBeforeFileAddedResult) {
+      // warning after the change in 0.24
+      if (onBeforeFileAddedResult.then) {
+        throw new TypeError('onBeforeFileAdded() returned a Promise, but this is no longer supported. It must be synchronous.');
+      }
+      file = onBeforeFileAddedResult;
+    }
+
+    var fileType = getFileType(file);
+    var fileName = void 0;
+    if (file.name) {
+      fileName = file.name;
+    } else if (fileType.split('/')[0] === 'image') {
+      fileName = fileType.split('/')[0] + '.' + fileType.split('/')[1];
+    } else {
+      fileName = 'noname';
+    }
+    var fileExtension = getFileNameAndExtension(fileName).extension;
+    var isRemote = file.isRemote || false;
+
+    var fileID = generateFileID(file);
+
+    var meta = file.meta || {};
+    meta.name = fileName;
+    meta.type = fileType;
+
+    var newFile = {
+      source: file.source || '',
+      id: fileID,
+      name: fileName,
+      extension: fileExtension || '',
+      meta: _extends({}, this.getState().meta, meta),
+      type: fileType,
+      data: file.data,
+      progress: {
+        percentage: 0,
+        bytesUploaded: 0,
+        bytesTotal: file.data.size || 0,
+        uploadComplete: false,
+        uploadStarted: false
+      },
+      size: file.data.size || 0,
+      isRemote: isRemote,
+      remote: file.remote || '',
+      preview: file.preview
+    };
+
+    try {
+      this._checkRestrictions(newFile);
+    } catch (err) {
+      onError(err);
+    }
+
+    this.setState({
+      files: _extends({}, files, (_extends3 = {}, _extends3[fileID] = newFile, _extends3))
+    });
+
+    this.emit('file-added', newFile);
+    this.log('Added file: ' + fileName + ', ' + fileID + ', mime type: ' + fileType);
+
+    if (this.opts.autoProceed && !this.scheduledAutoProceed) {
+      this.scheduledAutoProceed = setTimeout(function () {
+        _this2.scheduledAutoProceed = null;
+        _this2.upload().catch(function (err) {
+          console.error(err.stack || err.message || err);
+        });
+      }, 4);
+    }
+  };
+
+  Uppy.prototype.removeFile = function removeFile(fileID) {
+    var _this3 = this;
+
+    var _getState3 = this.getState(),
+        files = _getState3.files,
+        currentUploads = _getState3.currentUploads;
+
+    var updatedFiles = _extends({}, files);
+    var removedFile = updatedFiles[fileID];
+    delete updatedFiles[fileID];
+
+    // Remove this file from its `currentUpload`.
+    var updatedUploads = _extends({}, currentUploads);
+    var removeUploads = [];
+    Object.keys(updatedUploads).forEach(function (uploadID) {
+      var newFileIDs = currentUploads[uploadID].fileIDs.filter(function (uploadFileID) {
+        return uploadFileID !== fileID;
+      });
+      // Remove the upload if no files are associated with it anymore.
+      if (newFileIDs.length === 0) {
+        removeUploads.push(uploadID);
+        return;
+      }
+
+      updatedUploads[uploadID] = _extends({}, currentUploads[uploadID], {
+        fileIDs: newFileIDs
+      });
+    });
+
+    this.setState({
+      currentUploads: updatedUploads,
+      files: updatedFiles
+    });
+
+    removeUploads.forEach(function (uploadID) {
+      _this3._removeUpload(uploadID);
+    });
+
+    this._calculateTotalProgress();
+    this.emit('file-removed', removedFile);
+    this.log('File removed: ' + removedFile.id);
+  };
+
+  Uppy.prototype.pauseResume = function pauseResume(fileID) {
+    if (!this.getState().capabilities.resumableUploads || this.getFile(fileID).uploadComplete) {
+      return;
+    }
+
+    var wasPaused = this.getFile(fileID).isPaused || false;
+    var isPaused = !wasPaused;
+
+    this.setFileState(fileID, {
+      isPaused: isPaused
+    });
+
+    this.emit('upload-pause', fileID, isPaused);
+
+    return isPaused;
+  };
+
+  Uppy.prototype.pauseAll = function pauseAll() {
+    var updatedFiles = _extends({}, this.getState().files);
+    var inProgressUpdatedFiles = Object.keys(updatedFiles).filter(function (file) {
+      return !updatedFiles[file].progress.uploadComplete && updatedFiles[file].progress.uploadStarted;
+    });
+
+    inProgressUpdatedFiles.forEach(function (file) {
+      var updatedFile = _extends({}, updatedFiles[file], {
+        isPaused: true
+      });
+      updatedFiles[file] = updatedFile;
+    });
+    this.setState({ files: updatedFiles });
+
+    this.emit('pause-all');
+  };
+
+  Uppy.prototype.resumeAll = function resumeAll() {
+    var updatedFiles = _extends({}, this.getState().files);
+    var inProgressUpdatedFiles = Object.keys(updatedFiles).filter(function (file) {
+      return !updatedFiles[file].progress.uploadComplete && updatedFiles[file].progress.uploadStarted;
+    });
+
+    inProgressUpdatedFiles.forEach(function (file) {
+      var updatedFile = _extends({}, updatedFiles[file], {
+        isPaused: false,
+        error: null
+      });
+      updatedFiles[file] = updatedFile;
+    });
+    this.setState({ files: updatedFiles });
+
+    this.emit('resume-all');
+  };
+
+  Uppy.prototype.retryAll = function retryAll() {
+    var updatedFiles = _extends({}, this.getState().files);
+    var filesToRetry = Object.keys(updatedFiles).filter(function (file) {
+      return updatedFiles[file].error;
+    });
+
+    filesToRetry.forEach(function (file) {
+      var updatedFile = _extends({}, updatedFiles[file], {
+        isPaused: false,
+        error: null
+      });
+      updatedFiles[file] = updatedFile;
+    });
+    this.setState({
+      files: updatedFiles,
+      error: null
+    });
+
+    this.emit('retry-all', filesToRetry);
+
+    var uploadID = this._createUpload(filesToRetry);
+    return this._runUpload(uploadID);
+  };
+
+  Uppy.prototype.cancelAll = function cancelAll() {
+    var _this4 = this;
+
+    this.emit('cancel-all');
+
+    var files = Object.keys(this.getState().files);
+    files.forEach(function (fileID) {
+      _this4.removeFile(fileID);
+    });
+
+    this.setState({
+      allowNewUpload: true,
+      totalProgress: 0,
+      error: null
+    });
+  };
+
+  Uppy.prototype.retryUpload = function retryUpload(fileID) {
+    var updatedFiles = _extends({}, this.getState().files);
+    var updatedFile = _extends({}, updatedFiles[fileID], { error: null, isPaused: false });
+    updatedFiles[fileID] = updatedFile;
+    this.setState({
+      files: updatedFiles
+    });
+
+    this.emit('upload-retry', fileID);
+
+    var uploadID = this._createUpload([fileID]);
+    return this._runUpload(uploadID);
+  };
+
+  Uppy.prototype.reset = function reset() {
+    this.cancelAll();
+  };
+
+  Uppy.prototype._calculateProgress = function _calculateProgress(file, data) {
+    if (!this.getFile(file.id)) {
+      this.log('Not setting progress for a file that has been removed: ' + file.id);
+      return;
+    }
+
+    this.setFileState(file.id, {
+      progress: _extends({}, this.getFile(file.id).progress, {
+        bytesUploaded: data.bytesUploaded,
+        bytesTotal: data.bytesTotal,
+        percentage: Math.floor((data.bytesUploaded / data.bytesTotal * 100).toFixed(2))
+      })
+    });
+
+    this._calculateTotalProgress();
+  };
+
+  Uppy.prototype._calculateTotalProgress = function _calculateTotalProgress() {
+    // calculate total progress, using the number of files currently uploading,
+    // multiplied by 100 and the summ of individual progress of each file
+    var files = this.getFiles();
+
+    var inProgress = files.filter(function (file) {
+      return file.progress.uploadStarted;
+    });
+
+    if (inProgress.length === 0) {
+      this.setState({ totalProgress: 0 });
+      return;
+    }
+
+    var sizedFiles = inProgress.filter(function (file) {
+      return file.progress.bytesTotal != null;
+    });
+    var unsizedFiles = inProgress.filter(function (file) {
+      return file.progress.bytesTotal == null;
+    });
+
+    if (sizedFiles.length === 0) {
+      var progressMax = inProgress.length;
+      var currentProgress = unsizedFiles.reduce(function (acc, file) {
+        return acc + file.progress.percentage;
+      }, 0);
+      var _totalProgress = Math.round(currentProgress / progressMax * 100);
+      this.setState({ totalProgress: _totalProgress });
+      return;
+    }
+
+    var totalSize = sizedFiles.reduce(function (acc, file) {
+      return acc + file.progress.bytesTotal;
+    }, 0);
+    var averageSize = totalSize / sizedFiles.length;
+    totalSize += averageSize * unsizedFiles.length;
+
+    var uploadedSize = 0;
+    sizedFiles.forEach(function (file) {
+      uploadedSize += file.progress.bytesUploaded;
+    });
+    unsizedFiles.forEach(function (file) {
+      uploadedSize += averageSize * (file.progress.percentage || 0);
+    });
+
+    var totalProgress = totalSize === 0 ? 0 : Math.round(uploadedSize / totalSize * 100);
+
+    this.setState({ totalProgress: totalProgress });
+  };
+
+  /**
+   * Registers listeners for all global actions, like:
+   * `error`, `file-removed`, `upload-progress`
+   */
+
+
+  Uppy.prototype._addListeners = function _addListeners() {
+    var _this5 = this;
+
+    this.on('error', function (error) {
+      _this5.setState({ error: error.message });
+    });
+
+    this.on('upload-error', function (file, error) {
+      _this5.setFileState(file.id, { error: error.message });
+      _this5.setState({ error: error.message });
+
+      var message = _this5.i18n('failedToUpload', { file: file.name });
+      if ((typeof error === 'undefined' ? 'undefined' : _typeof(error)) === 'object' && error.message) {
+        message = { message: message, details: error.message };
+      }
+      _this5.info(message, 'error', 5000);
+    });
+
+    this.on('upload', function () {
+      _this5.setState({ error: null });
+    });
+
+    this.on('upload-started', function (file, upload) {
+      if (!_this5.getFile(file.id)) {
+        _this5.log('Not setting progress for a file that has been removed: ' + file.id);
+        return;
+      }
+      _this5.setFileState(file.id, {
+        progress: {
+          uploadStarted: Date.now(),
+          uploadComplete: false,
+          percentage: 0,
+          bytesUploaded: 0,
+          bytesTotal: file.size
+        }
+      });
+    });
+
+    // upload progress events can occur frequently, especially when you have a good
+    // connection to the remote server. Therefore, we are throtteling them to
+    // prevent accessive function calls.
+    // see also: https://github.com/tus/tus-js-client/commit/9940f27b2361fd7e10ba58b09b60d82422183bbb
+    // const _throttledCalculateProgress = throttle(this._calculateProgress, 100, { leading: true, trailing: true })
+
+    this.on('upload-progress', this._calculateProgress);
+
+    this.on('upload-success', function (file, uploadResp, uploadURL) {
+      var currentProgress = _this5.getFile(file.id).progress;
+      _this5.setFileState(file.id, {
+        progress: _extends({}, currentProgress, {
+          uploadComplete: true,
+          percentage: 100,
+          bytesUploaded: currentProgress.bytesTotal
+        }),
+        uploadURL: uploadURL,
+        isPaused: false
+      });
+
+      _this5._calculateTotalProgress();
+    });
+
+    this.on('preprocess-progress', function (file, progress) {
+      if (!_this5.getFile(file.id)) {
+        _this5.log('Not setting progress for a file that has been removed: ' + file.id);
+        return;
+      }
+      _this5.setFileState(file.id, {
+        progress: _extends({}, _this5.getFile(file.id).progress, {
+          preprocess: progress
+        })
+      });
+    });
+
+    this.on('preprocess-complete', function (file) {
+      if (!_this5.getFile(file.id)) {
+        _this5.log('Not setting progress for a file that has been removed: ' + file.id);
+        return;
+      }
+      var files = _extends({}, _this5.getState().files);
+      files[file.id] = _extends({}, files[file.id], {
+        progress: _extends({}, files[file.id].progress)
+      });
+      delete files[file.id].progress.preprocess;
+
+      _this5.setState({ files: files });
+    });
+
+    this.on('postprocess-progress', function (file, progress) {
+      if (!_this5.getFile(file.id)) {
+        _this5.log('Not setting progress for a file that has been removed: ' + file.id);
+        return;
+      }
+      _this5.setFileState(file.id, {
+        progress: _extends({}, _this5.getState().files[file.id].progress, {
+          postprocess: progress
+        })
+      });
+    });
+
+    this.on('postprocess-complete', function (file) {
+      if (!_this5.getFile(file.id)) {
+        _this5.log('Not setting progress for a file that has been removed: ' + file.id);
+        return;
+      }
+      var files = _extends({}, _this5.getState().files);
+      files[file.id] = _extends({}, files[file.id], {
+        progress: _extends({}, files[file.id].progress)
+      });
+      delete files[file.id].progress.postprocess;
+      // TODO should we set some kind of `fullyComplete` property on the file object
+      // so it's easier to see that the file is upload…fully complete…rather than
+      // what we have to do now (`uploadComplete && !postprocess`)
+
+      _this5.setState({ files: files });
+    });
+
+    this.on('restored', function () {
+      // Files may have changed--ensure progress is still accurate.
+      _this5._calculateTotalProgress();
+    });
+
+    // show informer if offline
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('online', function () {
+        return _this5.updateOnlineStatus();
+      });
+      window.addEventListener('offline', function () {
+        return _this5.updateOnlineStatus();
+      });
+      setTimeout(function () {
+        return _this5.updateOnlineStatus();
+      }, 3000);
+    }
+  };
+
+  Uppy.prototype.updateOnlineStatus = function updateOnlineStatus() {
+    var online = typeof window.navigator.onLine !== 'undefined' ? window.navigator.onLine : true;
+    if (!online) {
+      this.emit('is-offline');
+      this.info(this.i18n('noInternetConnection'), 'error', 0);
+      this.wasOffline = true;
+    } else {
+      this.emit('is-online');
+      if (this.wasOffline) {
+        this.emit('back-online');
+        this.info(this.i18n('connectedToInternet'), 'success', 3000);
+        this.wasOffline = false;
+      }
+    }
+  };
+
+  Uppy.prototype.getID = function getID() {
+    return this.opts.id;
+  };
+
+  /**
+   * Registers a plugin with Core.
+   *
+   * @param {object} Plugin object
+   * @param {object} [opts] object with options to be passed to Plugin
+   * @return {Object} self for chaining
+   */
+
+
+  Uppy.prototype.use = function use(Plugin, opts) {
+    if (typeof Plugin !== 'function') {
+      var msg = 'Expected a plugin class, but got ' + (Plugin === null ? 'null' : typeof Plugin === 'undefined' ? 'undefined' : _typeof(Plugin)) + '.' + ' Please verify that the plugin was imported and spelled correctly.';
+      throw new TypeError(msg);
+    }
+
+    // Instantiate
+    var plugin = new Plugin(this, opts);
+    var pluginId = plugin.id;
+    this.plugins[plugin.type] = this.plugins[plugin.type] || [];
+
+    if (!pluginId) {
+      throw new Error('Your plugin must have an id');
+    }
+
+    if (!plugin.type) {
+      throw new Error('Your plugin must have a type');
+    }
+
+    var existsPluginAlready = this.getPlugin(pluginId);
+    if (existsPluginAlready) {
+      var _msg = 'Already found a plugin named \'' + existsPluginAlready.id + '\'. ' + ('Tried to use: \'' + pluginId + '\'.\n') + 'Uppy plugins must have unique \'id\' options. See https://uppy.io/docs/plugins/#id.';
+      throw new Error(_msg);
+    }
+
+    this.plugins[plugin.type].push(plugin);
+    plugin.install();
+
+    return this;
+  };
+
+  /**
+   * Find one Plugin by name.
+   *
+   * @param {string} id plugin id
+   * @return {object | boolean}
+   */
+
+
+  Uppy.prototype.getPlugin = function getPlugin(id) {
+    var foundPlugin = null;
+    this.iteratePlugins(function (plugin) {
+      if (plugin.id === id) {
+        foundPlugin = plugin;
+        return false;
+      }
+    });
+    return foundPlugin;
+  };
+
+  /**
+   * Iterate through all `use`d plugins.
+   *
+   * @param {function} method that will be run on each plugin
+   */
+
+
+  Uppy.prototype.iteratePlugins = function iteratePlugins(method) {
+    var _this6 = this;
+
+    Object.keys(this.plugins).forEach(function (pluginType) {
+      _this6.plugins[pluginType].forEach(method);
+    });
+  };
+
+  /**
+   * Uninstall and remove a plugin.
+   *
+   * @param {object} instance The plugin instance to remove.
+   */
+
+
+  Uppy.prototype.removePlugin = function removePlugin(instance) {
+    this.log('Removing plugin ' + instance.id);
+    this.emit('plugin-remove', instance);
+
+    if (instance.uninstall) {
+      instance.uninstall();
+    }
+
+    var list = this.plugins[instance.type].slice();
+    var index = list.indexOf(instance);
+    if (index !== -1) {
+      list.splice(index, 1);
+      this.plugins[instance.type] = list;
+    }
+
+    var updatedState = this.getState();
+    delete updatedState.plugins[instance.id];
+    this.setState(updatedState);
+  };
+
+  /**
+   * Uninstall all plugins and close down this Uppy instance.
+   */
+
+
+  Uppy.prototype.close = function close() {
+    var _this7 = this;
+
+    this.log('Closing Uppy instance ' + this.opts.id + ': removing all files and uninstalling plugins');
+
+    this.reset();
+
+    this._storeUnsubscribe();
+
+    this.iteratePlugins(function (plugin) {
+      _this7.removePlugin(plugin);
+    });
+  };
+
+  /**
+  * Set info message in `state.info`, so that UI plugins like `Informer`
+  * can display the message.
+  *
+  * @param {string | object} message Message to be displayed by the informer
+  * @param {string} [type]
+  * @param {number} [duration]
+  */
+
+  Uppy.prototype.info = function info(message) {
+    var type = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'info';
+    var duration = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 3000;
+
+    var isComplexMessage = (typeof message === 'undefined' ? 'undefined' : _typeof(message)) === 'object';
+
+    this.setState({
+      info: {
+        isHidden: false,
+        type: type,
+        message: isComplexMessage ? message.message : message,
+        details: isComplexMessage ? message.details : null
+      }
+    });
+
+    this.emit('info-visible');
+
+    clearTimeout(this.infoTimeoutID);
+    if (duration === 0) {
+      this.infoTimeoutID = undefined;
+      return;
+    }
+
+    // hide the informer after `duration` milliseconds
+    this.infoTimeoutID = setTimeout(this.hideInfo, duration);
+  };
+
+  Uppy.prototype.hideInfo = function hideInfo() {
+    var newInfo = _extends({}, this.getState().info, {
+      isHidden: true
+    });
+    this.setState({
+      info: newInfo
+    });
+    this.emit('info-hidden');
+  };
+
+  /**
+   * Logs stuff to console, only if `debug` is set to true. Silent in production.
+   *
+   * @param {String|Object} msg to log
+   * @param {String} [type] optional `error` or `warning`
+   */
+
+
+  Uppy.prototype.log = function log(msg, type) {
+    if (!this.opts.debug) {
+      return;
+    }
+
+    var message = '[Uppy] [' + getTimeStamp() + '] ' + msg;
+
+    window['uppyLog'] = window['uppyLog'] + '\n' + 'DEBUG LOG: ' + msg;
+
+    if (type === 'error') {
+      console.error(message);
+      return;
+    }
+
+    if (type === 'warning') {
+      console.warn(message);
+      return;
+    }
+
+    if (msg === '' + msg) {
+      console.log(message);
+    } else {
+      message = '[Uppy] [' + getTimeStamp() + ']';
+      console.log(message);
+      console.dir(msg);
+    }
+  };
+
+  /**
+   * Obsolete, event listeners are now added in the constructor.
+   */
+
+
+  Uppy.prototype.run = function run() {
+    this.log('Calling run() is no longer necessary.', 'warning');
+    return this;
+  };
+
+  /**
+   * Restore an upload by its ID.
+   */
+
+
+  Uppy.prototype.restore = function restore(uploadID) {
+    this.log('Core: attempting to restore upload "' + uploadID + '"');
+
+    if (!this.getState().currentUploads[uploadID]) {
+      this._removeUpload(uploadID);
+      return Promise.reject(new Error('Nonexistent upload'));
+    }
+
+    return this._runUpload(uploadID);
+  };
+
+  /**
+   * Create an upload for a bunch of files.
+   *
+   * @param {Array<string>} fileIDs File IDs to include in this upload.
+   * @return {string} ID of this upload.
+   */
+
+
+  Uppy.prototype._createUpload = function _createUpload(fileIDs) {
+    var _extends4;
+
+    var _getState4 = this.getState(),
+        allowNewUpload = _getState4.allowNewUpload,
+        currentUploads = _getState4.currentUploads;
+
+    if (!allowNewUpload) {
+      throw new Error('Cannot create a new upload: already uploading.');
+    }
+
+    var uploadID = cuid();
+
+    this.emit('upload', {
+      id: uploadID,
+      fileIDs: fileIDs
+    });
+
+    this.setState({
+      allowNewUpload: this.opts.allowMultipleUploads !== false,
+
+      currentUploads: _extends({}, currentUploads, (_extends4 = {}, _extends4[uploadID] = {
+        fileIDs: fileIDs,
+        step: 0,
+        result: {}
+      }, _extends4))
+    });
+
+    return uploadID;
+  };
+
+  Uppy.prototype._getUpload = function _getUpload(uploadID) {
+    var _getState5 = this.getState(),
+        currentUploads = _getState5.currentUploads;
+
+    return currentUploads[uploadID];
+  };
+
+  /**
+   * Add data to an upload's result object.
+   *
+   * @param {string} uploadID The ID of the upload.
+   * @param {object} data Data properties to add to the result object.
+   */
+
+
+  Uppy.prototype.addResultData = function addResultData(uploadID, data) {
+    var _extends5;
+
+    if (!this._getUpload(uploadID)) {
+      this.log('Not setting result for an upload that has been removed: ' + uploadID);
+      return;
+    }
+    var currentUploads = this.getState().currentUploads;
+    var currentUpload = _extends({}, currentUploads[uploadID], {
+      result: _extends({}, currentUploads[uploadID].result, data)
+    });
+    this.setState({
+      currentUploads: _extends({}, currentUploads, (_extends5 = {}, _extends5[uploadID] = currentUpload, _extends5))
+    });
+  };
+
+  /**
+   * Remove an upload, eg. if it has been canceled or completed.
+   *
+   * @param {string} uploadID The ID of the upload.
+   */
+
+
+  Uppy.prototype._removeUpload = function _removeUpload(uploadID) {
+    var currentUploads = _extends({}, this.getState().currentUploads);
+    delete currentUploads[uploadID];
+
+    this.setState({
+      currentUploads: currentUploads
+    });
+  };
+
+  /**
+   * Run an upload. This picks up where it left off in case the upload is being restored.
+   *
+   * @private
+   */
+
+
+  Uppy.prototype._runUpload = function _runUpload(uploadID) {
+    var _this8 = this;
+
+    var uploadData = this.getState().currentUploads[uploadID];
+    var restoreStep = uploadData.step;
+
+    var steps = [].concat(this.preProcessors, this.uploaders, this.postProcessors);
+    var lastStep = Promise.resolve();
+    steps.forEach(function (fn, step) {
+      // Skip this step if we are restoring and have already completed this step before.
+      if (step < restoreStep) {
+        return;
+      }
+
+      lastStep = lastStep.then(function () {
+        var _extends6;
+
+        var _getState6 = _this8.getState(),
+            currentUploads = _getState6.currentUploads;
+
+        var currentUpload = _extends({}, currentUploads[uploadID], {
+          step: step
+        });
+        _this8.setState({
+          currentUploads: _extends({}, currentUploads, (_extends6 = {}, _extends6[uploadID] = currentUpload, _extends6))
+        });
+
+        // TODO give this the `currentUpload` object as its only parameter maybe?
+        // Otherwise when more metadata may be added to the upload this would keep getting more parameters
+        return fn(currentUpload.fileIDs, uploadID);
+      }).then(function (result) {
+        return null;
+      });
+    });
+
+    // Not returning the `catch`ed promise, because we still want to return a rejected
+    // promise from this method if the upload failed.
+    lastStep.catch(function (err) {
+      _this8.emit('error', err, uploadID);
+      _this8._removeUpload(uploadID);
+    });
+
+    return lastStep.then(function () {
+      // Set result data.
+      var _getState7 = _this8.getState(),
+          currentUploads = _getState7.currentUploads;
+
+      var currentUpload = currentUploads[uploadID];
+      if (!currentUpload) {
+        _this8.log('Not setting result for an upload that has been removed: ' + uploadID);
+        return;
+      }
+
+      var files = currentUpload.fileIDs.map(function (fileID) {
+        return _this8.getFile(fileID);
+      });
+      var successful = files.filter(function (file) {
+        return !file.error;
+      });
+      var failed = files.filter(function (file) {
+        return file.error;
+      });
+      _this8.addResultData(uploadID, { successful: successful, failed: failed, uploadID: uploadID });
+    }).then(function () {
+      // Emit completion events.
+      // This is in a separate function so that the `currentUploads` variable
+      // always refers to the latest state. In the handler right above it refers
+      // to an outdated object without the `.result` property.
+      var _getState8 = _this8.getState(),
+          currentUploads = _getState8.currentUploads;
+
+      var currentUpload = currentUploads[uploadID];
+      var result = currentUpload.result;
+      _this8.emit('complete', result);
+
+      _this8._removeUpload(uploadID);
+
+      return result;
+    });
+  };
+
+  /**
+   * Start an upload for all the files that are not currently being uploaded.
+   *
+   * @return {Promise}
+   */
+
+
+  Uppy.prototype.upload = function upload() {
+    var _this9 = this;
+
+    if (!this.plugins.uploader) {
+      this.log('No uploader type plugins are used', 'warning');
+    }
+
+    var files = this.getState().files;
+    var onBeforeUploadResult = this.opts.onBeforeUpload(files);
+
+    if (onBeforeUploadResult === false) {
+      return Promise.reject(new Error('Not starting the upload because onBeforeUpload returned false'));
+    }
+
+    if (onBeforeUploadResult && (typeof onBeforeUploadResult === 'undefined' ? 'undefined' : _typeof(onBeforeUploadResult)) === 'object') {
+      // warning after the change in 0.24
+      if (onBeforeUploadResult.then) {
+        throw new TypeError('onBeforeUpload() returned a Promise, but this is no longer supported. It must be synchronous.');
+      }
+
+      files = onBeforeUploadResult;
+    }
+
+    return Promise.resolve().then(function () {
+      return _this9._checkMinNumberOfFiles(files);
+    }).then(function () {
+      var _getState9 = _this9.getState(),
+          currentUploads = _getState9.currentUploads;
+      // get a list of files that are currently assigned to uploads
+
+
+      var currentlyUploadingFiles = Object.keys(currentUploads).reduce(function (prev, curr) {
+        return prev.concat(currentUploads[curr].fileIDs);
+      }, []);
+
+      var waitingFileIDs = [];
+      Object.keys(files).forEach(function (fileID) {
+        var file = _this9.getFile(fileID);
+        // if the file hasn't started uploading and hasn't already been assigned to an upload..
+        if (!file.progress.uploadStarted && currentlyUploadingFiles.indexOf(fileID) === -1) {
+          waitingFileIDs.push(file.id);
+        }
+      });
+
+      var uploadID = _this9._createUpload(waitingFileIDs);
+      return _this9._runUpload(uploadID);
+    }).catch(function (err) {
+      var message = (typeof err === 'undefined' ? 'undefined' : _typeof(err)) === 'object' ? err.message : err;
+      var details = (typeof err === 'undefined' ? 'undefined' : _typeof(err)) === 'object' ? err.details : null;
+      _this9.log(message + ' ' + details);
+      _this9.info({ message: message, details: details }, 'error', 4000);
+      return Promise.reject((typeof err === 'undefined' ? 'undefined' : _typeof(err)) === 'object' ? err : new Error(err));
+    });
+  };
+
+  _createClass(Uppy, [{
+    key: 'state',
+    get: function get() {
+      return this.getState();
+    }
+  }]);
+
+  return Uppy;
+}();
+
+module.exports = function (opts) {
+  return new Uppy(opts);
+};
+
+// Expose class constructor.
+module.exports.Uppy = Uppy;
+module.exports.Plugin = Plugin;
+},{"./Plugin":31,"./supportsUploadProgress":33,"@uppy/store-default":35,"@uppy/utils/lib/Translator":36,"@uppy/utils/lib/generateFileID":38,"@uppy/utils/lib/getFileNameAndExtension":39,"@uppy/utils/lib/getFileType":40,"@uppy/utils/lib/getTimeStamp":41,"cuid":45,"mime-match":52,"namespace-emitter":53,"prettier-bytes":56}],33:[function(require,module,exports){
+// Edge 15.x does not fire 'progress' events on uploads.
+// See https://github.com/transloadit/uppy/issues/945
+// And https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/12224510/
+module.exports = function supportsUploadProgress(userAgent) {
+  // Allow passing in userAgent for tests
+  if (userAgent == null) {
+    userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null;
+  }
+  // Assume it works because basically everything supports progress events.
+  if (!userAgent) return true;
+
+  var m = /Edge\/(\d+\.\d+)/.exec(userAgent);
+  if (!m) return true;
+
+  var edgeVersion = m[1];
+
+  var _edgeVersion$split = edgeVersion.split('.'),
+      major = _edgeVersion$split[0],
+      minor = _edgeVersion$split[1];
+
+  major = parseInt(major, 10);
+  minor = parseInt(minor, 10);
+
+  // Worked before:
+  // Edge 40.15063.0.0
+  // Microsoft EdgeHTML 15.15063
+  if (major < 15 || major === 15 && minor < 15063) {
+    return true;
+  }
+
+  // Fixed in:
+  // Microsoft EdgeHTML 18.18218
+  if (major > 18 || major === 18 && minor >= 18218) {
+    return true;
+  }
+
+  // other versions don't work.
+  return false;
+};
+},{}],34:[function(require,module,exports){
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _require = require('@uppy/core'),
+    Plugin = _require.Plugin;
+
+var Translator = require('@uppy/utils/lib/Translator');
+var toArray = require('@uppy/utils/lib/toArray');
+var dragDrop = require('drag-drop');
+
+var _require2 = require('preact'),
+    h = _require2.h;
+
+/**
+ * Drag & Drop plugin
+ *
+ */
+
+
+module.exports = function (_Plugin) {
+  _inherits(DragDrop, _Plugin);
+
+  function DragDrop(uppy, opts) {
+    _classCallCheck(this, DragDrop);
+
+    var _this = _possibleConstructorReturn(this, _Plugin.call(this, uppy, opts));
+
+    _this.type = 'acquirer';
+    _this.id = _this.opts.id || 'DragDrop';
+    _this.title = 'Drag & Drop';
+
+    var defaultLocale = {
+      strings: {
+        dropHereOr: 'Drop files here or %{browse}',
+        browse: 'browse'
+      }
+
+      // Default options
+    };var defaultOpts = {
+      target: null,
+      inputName: 'files[]',
+      width: '100%',
+      height: '100%',
+      note: null,
+      locale: defaultLocale
+
+      // Merge default options with the ones set by user
+    };_this.opts = _extends({}, defaultOpts, opts);
+
+    // Check for browser dragDrop support
+    _this.isDragDropSupported = _this.checkDragDropSupport();
+
+    // i18n
+    _this.translator = new Translator([defaultLocale, _this.uppy.locale, _this.opts.locale]);
+    _this.i18n = _this.translator.translate.bind(_this.translator);
+    _this.i18nArray = _this.translator.translateArray.bind(_this.translator);
+
+    // Bind `this` to class methods
+    _this.handleDrop = _this.handleDrop.bind(_this);
+    _this.handleInputChange = _this.handleInputChange.bind(_this);
+    _this.checkDragDropSupport = _this.checkDragDropSupport.bind(_this);
+    _this.render = _this.render.bind(_this);
+    return _this;
+  }
+
+  /**
+   * Checks if the browser supports Drag & Drop (not supported on mobile devices, for example).
+   * @return {Boolean}
+   */
+
+
+  DragDrop.prototype.checkDragDropSupport = function checkDragDropSupport() {
+    var div = document.createElement('div');
+
+    if (!('draggable' in div) || !('ondragstart' in div && 'ondrop' in div)) {
+      return false;
+    }
+
+    if (!('FormData' in window)) {
+      return false;
+    }
+
+    if (!('FileReader' in window)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  DragDrop.prototype.handleDrop = function handleDrop(files) {
+    var _this2 = this;
+
+    this.uppy.log('[DragDrop] Files dropped');
+
+    files.forEach(function (file) {
+      try {
+        _this2.uppy.addFile({
+          source: _this2.id,
+          name: file.name,
+          type: file.type,
+          data: file
+        });
+      } catch (err) {
+        // Nothing, restriction errors handled in Core
+      }
+    });
+  };
+
+  DragDrop.prototype.handleInputChange = function handleInputChange(ev) {
+    var _this3 = this;
+
+    this.uppy.log('[DragDrop] Files selected through input');
+
+    var files = toArray(ev.target.files);
+
+    files.forEach(function (file) {
+      try {
+        _this3.uppy.addFile({
+          source: _this3.id,
+          name: file.name,
+          type: file.type,
+          data: file
+        });
+      } catch (err) {
+        // Nothing, restriction errors handled in Core
+      }
+    });
+  };
+
+  DragDrop.prototype.render = function render(state) {
+    var _this4 = this;
+
+    /* http://tympanus.net/codrops/2015/09/15/styling-customizing-file-inputs-smart-way/ */
+    var hiddenInputStyle = {
+      width: '0.1px',
+      height: '0.1px',
+      opacity: 0,
+      overflow: 'hidden',
+      position: 'absolute',
+      zIndex: -1
+    };
+    var DragDropClass = 'uppy-Root uppy-DragDrop-container ' + (this.isDragDropSupported ? 'uppy-DragDrop--is-dragdrop-supported' : '');
+    var DragDropStyle = {
+      width: this.opts.width,
+      height: this.opts.height
+    };
+    var restrictions = this.uppy.opts.restrictions;
+
+    // empty value="" on file input, so that the input is cleared after a file is selected,
+    // because Uppy will be handling the upload and so we can select same file
+    // after removing — otherwise browser thinks it’s already selected
+    return h(
+      'div',
+      { 'class': DragDropClass, style: DragDropStyle },
+      h(
+        'div',
+        { 'class': 'uppy-DragDrop-inner' },
+        h(
+          'svg',
+          { 'aria-hidden': 'true', 'class': 'UppyIcon uppy-DragDrop-arrow', width: '16', height: '16', viewBox: '0 0 16 16', xmlns: 'http://www.w3.org/2000/svg' },
+          h('path', { d: 'M11 10V0H5v10H2l6 6 6-6h-3zm0 0', 'fill-rule': 'evenodd' })
+        ),
+        h(
+          'label',
+          { 'class': 'uppy-DragDrop-label' },
+          h('input', { style: hiddenInputStyle,
+            'class': 'uppy-DragDrop-input',
+            type: 'file',
+            name: this.opts.inputName,
+            multiple: restrictions.maxNumberOfFiles !== 1,
+            accept: restrictions.allowedFileTypes,
+            ref: function ref(input) {
+              _this4.input = input;
+            },
+            onchange: this.handleInputChange,
+            value: '' }),
+          this.i18nArray('dropHereOr', {
+            browse: h(
+              'span',
+              { 'class': 'uppy-DragDrop-dragText' },
+              this.i18n('browse')
+            )
+          })
+        ),
+        h(
+          'span',
+          { 'class': 'uppy-DragDrop-note' },
+          this.opts.note
+        )
+      )
+    );
+  };
+
+  DragDrop.prototype.install = function install() {
+    var _this5 = this;
+
+    var target = this.opts.target;
+    if (target) {
+      this.mount(target, this);
+    }
+    this.removeDragDropListener = dragDrop(this.el, function (files) {
+      _this5.handleDrop(files);
+      _this5.uppy.log(files);
+    });
+  };
+
+  DragDrop.prototype.uninstall = function uninstall() {
+    this.unmount();
+    this.removeDragDropListener();
+  };
+
+  return DragDrop;
+}(Plugin);
+},{"@uppy/core":32,"@uppy/utils/lib/Translator":36,"@uppy/utils/lib/toArray":44,"drag-drop":49,"preact":55}],35:[function(require,module,exports){
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * Default store that keeps state in a simple object.
+ */
+var DefaultStore = function () {
+  function DefaultStore() {
+    _classCallCheck(this, DefaultStore);
+
+    this.state = {};
+    this.callbacks = [];
+  }
+
+  DefaultStore.prototype.getState = function getState() {
+    return this.state;
+  };
+
+  DefaultStore.prototype.setState = function setState(patch) {
+    var prevState = _extends({}, this.state);
+    var nextState = _extends({}, this.state, patch);
+
+    this.state = nextState;
+    this._publish(prevState, nextState, patch);
+  };
+
+  DefaultStore.prototype.subscribe = function subscribe(listener) {
+    var _this = this;
+
+    this.callbacks.push(listener);
+    return function () {
+      // Remove the listener.
+      _this.callbacks.splice(_this.callbacks.indexOf(listener), 1);
+    };
+  };
+
+  DefaultStore.prototype._publish = function _publish() {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    this.callbacks.forEach(function (listener) {
+      listener.apply(undefined, args);
+    });
+  };
+
+  return DefaultStore;
+}();
+
+module.exports = function defaultStore() {
+  return new DefaultStore();
+};
+},{}],36:[function(require,module,exports){
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * Translates strings with interpolation & pluralization support.
+ * Extensible with custom dictionaries and pluralization functions.
+ *
+ * Borrows heavily from and inspired by Polyglot https://github.com/airbnb/polyglot.js,
+ * basically a stripped-down version of it. Differences: pluralization functions are not hardcoded
+ * and can be easily added among with dictionaries, nested objects are used for pluralization
+ * as opposed to `||||` delimeter
+ *
+ * Usage example: `translator.translate('files_chosen', {smart_count: 3})`
+ *
+ * @param {object|Array<object>} locale Locale or list of locales.
+ */
+module.exports = function () {
+  function Translator(locales) {
+    var _this = this;
+
+    _classCallCheck(this, Translator);
+
+    this.locale = {
+      strings: {},
+      pluralize: function pluralize(n) {
+        if (n === 1) {
+          return 0;
+        }
+        return 1;
+      }
+    };
+
+    if (Array.isArray(locales)) {
+      locales.forEach(function (locale) {
+        return _this._apply(locale);
+      });
+    } else {
+      this._apply(locales);
+    }
+  }
+
+  Translator.prototype._apply = function _apply(locale) {
+    if (!locale || !locale.strings) {
+      return;
+    }
+
+    var prevLocale = this.locale;
+    this.locale = _extends({}, prevLocale, {
+      strings: _extends({}, prevLocale.strings, locale.strings)
+    });
+    this.locale.pluralize = locale.pluralize || prevLocale.pluralize;
+  };
+
+  /**
+   * Takes a string with placeholder variables like `%{smart_count} file selected`
+   * and replaces it with values from options `{smart_count: 5}`
+   *
+   * @license https://github.com/airbnb/polyglot.js/blob/master/LICENSE
+   * taken from https://github.com/airbnb/polyglot.js/blob/master/lib/polyglot.js#L299
+   *
+   * @param {string} phrase that needs interpolation, with placeholders
+   * @param {object} options with values that will be used to replace placeholders
+   * @return {string} interpolated
+   */
+
+
+  Translator.prototype.interpolate = function interpolate(phrase, options) {
+    var _String$prototype = String.prototype,
+        split = _String$prototype.split,
+        replace = _String$prototype.replace;
+
+    var dollarRegex = /\$/g;
+    var dollarBillsYall = '$$$$';
+    var interpolated = [phrase];
+
+    for (var arg in options) {
+      if (arg !== '_' && options.hasOwnProperty(arg)) {
+        // Ensure replacement value is escaped to prevent special $-prefixed
+        // regex replace tokens. the "$$$$" is needed because each "$" needs to
+        // be escaped with "$" itself, and we need two in the resulting output.
+        var replacement = options[arg];
+        if (typeof replacement === 'string') {
+          replacement = replace.call(options[arg], dollarRegex, dollarBillsYall);
+        }
+        // We create a new `RegExp` each time instead of using a more-efficient
+        // string replace so that the same argument can be replaced multiple times
+        // in the same phrase.
+        interpolated = insertReplacement(interpolated, new RegExp('%\\{' + arg + '\\}', 'g'), replacement);
+      }
+    }
+
+    return interpolated;
+
+    function insertReplacement(source, rx, replacement) {
+      var newParts = [];
+      source.forEach(function (chunk) {
+        split.call(chunk, rx).forEach(function (raw, i, list) {
+          if (raw !== '') {
+            newParts.push(raw);
+          }
+
+          // Interlace with the `replacement` value
+          if (i < list.length - 1) {
+            newParts.push(replacement);
+          }
+        });
+      });
+      return newParts;
+    }
+  };
+
+  /**
+   * Public translate method
+   *
+   * @param {string} key
+   * @param {object} options with values that will be used later to replace placeholders in string
+   * @return {string} translated (and interpolated)
+   */
+
+
+  Translator.prototype.translate = function translate(key, options) {
+    return this.translateArray(key, options).join('');
+  };
+
+  /**
+   * Get a translation and return the translated and interpolated parts as an array.
+   * @param {string} key
+   * @param {object} options with values that will be used to replace placeholders
+   * @return {Array} The translated and interpolated parts, in order.
+   */
+
+
+  Translator.prototype.translateArray = function translateArray(key, options) {
+    if (options && typeof options.smart_count !== 'undefined') {
+      var plural = this.locale.pluralize(options.smart_count);
+      return this.interpolate(this.locale.strings[key][plural], options);
+    }
+
+    return this.interpolate(this.locale.strings[key], options);
+  };
+
+  return Translator;
+}();
+},{}],37:[function(require,module,exports){
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+var isDOMElement = require('./isDOMElement');
+
+/**
+ * Find a DOM element.
+ *
+ * @param {Node|string} element
+ * @return {Node|null}
+ */
+module.exports = function findDOMElement(element) {
+  if (typeof element === 'string') {
+    return document.querySelector(element);
+  }
+
+  if ((typeof element === 'undefined' ? 'undefined' : _typeof(element)) === 'object' && isDOMElement(element)) {
+    return element;
+  }
+};
+},{"./isDOMElement":42}],38:[function(require,module,exports){
+/**
+ * Takes a file object and turns it into fileID, by converting file.name to lowercase,
+ * removing extra characters and adding type, size and lastModified
+ *
+ * @param {Object} file
+ * @return {String} the fileID
+ *
+ */
+module.exports = function generateFileID(file) {
+  // filter is needed to not join empty values with `-`
+  return ['uppy', file.name ? file.name.toLowerCase().replace(/[^A-Z0-9]/ig, '') : '', file.type, file.data.size, file.data.lastModified].filter(function (val) {
+    return val;
+  }).join('-');
+};
+},{}],39:[function(require,module,exports){
+/**
+* Takes a full filename string and returns an object {name, extension}
+*
+* @param {string} fullFileName
+* @return {object} {name, extension}
+*/
+module.exports = function getFileNameAndExtension(fullFileName) {
+  var re = /(?:\.([^.]+))?$/;
+  var fileExt = re.exec(fullFileName)[1];
+  var fileName = fullFileName.replace('.' + fileExt, '');
+  return {
+    name: fileName,
+    extension: fileExt
+  };
+};
+},{}],40:[function(require,module,exports){
+var getFileNameAndExtension = require('./getFileNameAndExtension');
+var mimeTypes = require('./mimeTypes');
+
+module.exports = function getFileType(file) {
+  var fileExtension = file.name ? getFileNameAndExtension(file.name).extension : null;
+  fileExtension = fileExtension ? fileExtension.toLowerCase() : null;
+
+  if (file.isRemote) {
+    // some remote providers do not support file types
+    return file.type ? file.type : mimeTypes[fileExtension];
+  }
+
+  // check if mime type is set in the file object
+  if (file.type) {
+    return file.type;
+  }
+
+  // see if we can map extension to a mime type
+  if (fileExtension && mimeTypes[fileExtension]) {
+    return mimeTypes[fileExtension];
+  }
+
+  // if all fails, fall back to a generic byte stream type
+  return 'application/octet-stream';
+};
+},{"./getFileNameAndExtension":39,"./mimeTypes":43}],41:[function(require,module,exports){
+/**
+ * Returns a timestamp in the format of `hours:minutes:seconds`
+*/
+module.exports = function getTimeStamp() {
+  var date = new Date();
+  var hours = pad(date.getHours().toString());
+  var minutes = pad(date.getMinutes().toString());
+  var seconds = pad(date.getSeconds().toString());
+  return hours + ':' + minutes + ':' + seconds;
+};
+
+/**
+ * Adds zero to strings shorter than two characters
+*/
+function pad(str) {
+  return str.length !== 2 ? 0 + str : str;
+}
+},{}],42:[function(require,module,exports){
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+/**
+ * Check if an object is a DOM element. Duck-typing based on `nodeType`.
+ *
+ * @param {*} obj
+ */
+module.exports = function isDOMElement(obj) {
+  return obj && (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object' && obj.nodeType === Node.ELEMENT_NODE;
+};
+},{}],43:[function(require,module,exports){
+module.exports = {
+  'md': 'text/markdown',
+  'markdown': 'text/markdown',
+  'mp4': 'video/mp4',
+  'mp3': 'audio/mp3',
+  'svg': 'image/svg+xml',
+  'jpg': 'image/jpeg',
+  'png': 'image/png',
+  'gif': 'image/gif',
+  'yaml': 'text/yaml',
+  'yml': 'text/yaml',
+  'csv': 'text/csv',
+  'avi': 'video/x-msvideo',
+  'mks': 'video/x-matroska',
+  'mkv': 'video/x-matroska',
+  'mov': 'video/quicktime',
+  'doc': 'application/msword',
+  'docm': 'application/vnd.ms-word.document.macroenabled.12',
+  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'dot': 'application/msword',
+  'dotm': 'application/vnd.ms-word.template.macroenabled.12',
+  'dotx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+  'xla': 'application/vnd.ms-excel',
+  'xlam': 'application/vnd.ms-excel.addin.macroenabled.12',
+  'xlc': 'application/vnd.ms-excel',
+  'xlf': 'application/x-xliff+xml',
+  'xlm': 'application/vnd.ms-excel',
+  'xls': 'application/vnd.ms-excel',
+  'xlsb': 'application/vnd.ms-excel.sheet.binary.macroenabled.12',
+  'xlsm': 'application/vnd.ms-excel.sheet.macroenabled.12',
+  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'xlt': 'application/vnd.ms-excel',
+  'xltm': 'application/vnd.ms-excel.template.macroenabled.12',
+  'xltx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+  'xlw': 'application/vnd.ms-excel'
+};
+},{}],44:[function(require,module,exports){
+/**
+ * Converts list into array
+*/
+module.exports = function toArray(list) {
+  return Array.prototype.slice.call(list || [], 0);
+};
+},{}],45:[function(require,module,exports){
+/**
+ * cuid.js
+ * Collision-resistant UID generator for browsers and node.
+ * Sequential for fast db lookups and recency sorting.
+ * Safe for element IDs and server-side lookups.
+ *
+ * Extracted from CLCTR
+ *
+ * Copyright (c) Eric Elliott 2012
+ * MIT License
+ */
+
+var fingerprint = require('./lib/fingerprint.js');
+var pad = require('./lib/pad.js');
+var getRandomValue = require('./lib/getRandomValue.js');
+
+var c = 0,
+  blockSize = 4,
+  base = 36,
+  discreteValues = Math.pow(base, blockSize);
+
+function randomBlock () {
+  return pad((getRandomValue() *
+    discreteValues << 0)
+    .toString(base), blockSize);
+}
+
+function safeCounter () {
+  c = c < discreteValues ? c : 0;
+  c++; // this is not subliminal
+  return c - 1;
+}
+
+function cuid () {
+  // Starting with a lowercase letter makes
+  // it HTML element ID friendly.
+  var letter = 'c', // hard-coded allows for sequential access
+
+    // timestamp
+    // warning: this exposes the exact date and time
+    // that the uid was created.
+    timestamp = (new Date().getTime()).toString(base),
+
+    // Prevent same-machine collisions.
+    counter = pad(safeCounter().toString(base), blockSize),
+
+    // A few chars to generate distinct ids for different
+    // clients (so different computers are far less
+    // likely to generate the same id)
+    print = fingerprint(),
+
+    // Grab some more chars from Math.random()
+    random = randomBlock() + randomBlock();
+
+  return letter + timestamp + counter + print + random;
+}
+
+cuid.slug = function slug () {
+  var date = new Date().getTime().toString(36),
+    counter = safeCounter().toString(36).slice(-4),
+    print = fingerprint().slice(0, 1) +
+      fingerprint().slice(-1),
+    random = randomBlock().slice(-2);
+
+  return date.slice(-2) +
+    counter + print + random;
+};
+
+cuid.isCuid = function isCuid (stringToCheck) {
+  if (typeof stringToCheck !== 'string') return false;
+  if (stringToCheck.startsWith('c')) return true;
+  return false;
+};
+
+cuid.isSlug = function isSlug (stringToCheck) {
+  if (typeof stringToCheck !== 'string') return false;
+  var stringLength = stringToCheck.length;
+  if (stringLength >= 7 && stringLength <= 10) return true;
+  return false;
+};
+
+cuid.fingerprint = fingerprint;
+
+module.exports = cuid;
+
+},{"./lib/fingerprint.js":46,"./lib/getRandomValue.js":47,"./lib/pad.js":48}],46:[function(require,module,exports){
+var pad = require('./pad.js');
+
+var env = typeof window === 'object' ? window : self;
+var globalCount = Object.keys(env).length;
+var mimeTypesLength = navigator.mimeTypes ? navigator.mimeTypes.length : 0;
+var clientId = pad((mimeTypesLength +
+  navigator.userAgent.length).toString(36) +
+  globalCount.toString(36), 4);
+
+module.exports = function fingerprint () {
+  return clientId;
+};
+
+},{"./pad.js":48}],47:[function(require,module,exports){
+
+var getRandomValue;
+
+var crypto = window.crypto || window.msCrypto;
+
+if (crypto) {
+    var lim = Math.pow(2, 32) - 1;
+    getRandomValue = function () {
+        return Math.abs(crypto.getRandomValues(new Uint32Array(1))[0] / lim);
+    };
+} else {
+    getRandomValue = Math.random;
+}
+
+module.exports = getRandomValue;
+
+},{}],48:[function(require,module,exports){
+module.exports = function pad (num, size) {
+  var s = '000000000' + num;
+  return s.substr(s.length - size);
+};
+
+},{}],49:[function(require,module,exports){
+module.exports = dragDrop
+
+var flatten = require('flatten')
+var parallel = require('run-parallel')
+
+function dragDrop (elem, listeners) {
+  if (typeof elem === 'string') {
+    var selector = elem
+    elem = window.document.querySelector(elem)
+    if (!elem) {
+      throw new Error('"' + selector + '" does not match any HTML elements')
+    }
+  }
+
+  if (!elem) {
+    throw new Error('"' + elem + '" is not a valid HTML element')
+  }
+
+  if (typeof listeners === 'function') {
+    listeners = { onDrop: listeners }
+  }
+
+  var timeout
+
+  elem.addEventListener('dragenter', onDragEnter, false)
+  elem.addEventListener('dragover', onDragOver, false)
+  elem.addEventListener('dragleave', onDragLeave, false)
+  elem.addEventListener('drop', onDrop, false)
+
+  // Function to remove drag-drop listeners
+  return function remove () {
+    removeDragClass()
+    elem.removeEventListener('dragenter', onDragEnter, false)
+    elem.removeEventListener('dragover', onDragOver, false)
+    elem.removeEventListener('dragleave', onDragLeave, false)
+    elem.removeEventListener('drop', onDrop, false)
+  }
+
+  function onDragEnter (e) {
+    if (listeners.onDragEnter) {
+      listeners.onDragEnter(e)
+    }
+
+    // Prevent event
+    e.stopPropagation()
+    e.preventDefault()
+    return false
+  }
+
+  function onDragOver (e) {
+    e.stopPropagation()
+    e.preventDefault()
+    if (e.dataTransfer.items) {
+      // Only add "drag" class when `items` contains items that are able to be
+      // handled by the registered listeners (files vs. text)
+      var items = toArray(e.dataTransfer.items)
+      var fileItems = items.filter(function (item) { return item.kind === 'file' })
+      var textItems = items.filter(function (item) { return item.kind === 'string' })
+
+      if (fileItems.length === 0 && !listeners.onDropText) return
+      if (textItems.length === 0 && !listeners.onDrop) return
+      if (fileItems.length === 0 && textItems.length === 0) return
+    }
+
+    elem.classList.add('drag')
+    clearTimeout(timeout)
+
+    if (listeners.onDragOver) {
+      listeners.onDragOver(e)
+    }
+
+    e.dataTransfer.dropEffect = 'copy'
+    return false
+  }
+
+  function onDragLeave (e) {
+    e.stopPropagation()
+    e.preventDefault()
+
+    if (listeners.onDragLeave) {
+      listeners.onDragLeave(e)
+    }
+
+    clearTimeout(timeout)
+    timeout = setTimeout(removeDragClass, 50)
+
+    return false
+  }
+
+  function onDrop (e) {
+    e.stopPropagation()
+    e.preventDefault()
+
+    if (listeners.onDragLeave) {
+      listeners.onDragLeave(e)
+    }
+
+    clearTimeout(timeout)
+    removeDragClass()
+
+    var pos = {
+      x: e.clientX,
+      y: e.clientY
+    }
+
+    // text drop support
+    var text = e.dataTransfer.getData('text')
+    if (text && listeners.onDropText) {
+      listeners.onDropText(text, pos)
+    }
+
+    // file drop support
+    if (e.dataTransfer.items) {
+      // Handle directories in Chrome using the proprietary FileSystem API
+      var items = toArray(e.dataTransfer.items).filter(function (item) {
+        return item.kind === 'file'
+      })
+
+      if (items.length === 0) return
+
+      parallel(items.map(function (item) {
+        return function (cb) {
+          processEntry(item.webkitGetAsEntry(), cb)
+        }
+      }), function (err, results) {
+        // This catches permission errors with file:// in Chrome. This should never
+        // throw in production code, so the user does not need to use try-catch.
+        if (err) throw err
+        if (listeners.onDrop) {
+          listeners.onDrop(flatten(results), pos)
+        }
+      })
+    } else {
+      var files = toArray(e.dataTransfer.files)
+
+      if (files.length === 0) return
+
+      files.forEach(function (file) {
+        file.fullPath = '/' + file.name
+      })
+
+      if (listeners.onDrop) {
+        listeners.onDrop(files, pos)
+      }
+    }
+
+    return false
+  }
+
+  function removeDragClass () {
+    elem.classList.remove('drag')
+  }
+}
+
+function processEntry (entry, cb) {
+  var entries = []
+
+  if (entry.isFile) {
+    entry.file(function (file) {
+      file.fullPath = entry.fullPath // preserve pathing for consumer
+      cb(null, file)
+    }, function (err) {
+      cb(err)
+    })
+  } else if (entry.isDirectory) {
+    var reader = entry.createReader()
+    readEntries()
+  }
+
+  function readEntries () {
+    reader.readEntries(function (entries_) {
+      if (entries_.length > 0) {
+        entries = entries.concat(toArray(entries_))
+        readEntries() // continue reading entries until `readEntries` returns no more
+      } else {
+        doneEntries()
+      }
+    })
+  }
+
+  function doneEntries () {
+    parallel(entries.map(function (entry) {
+      return function (cb) {
+        processEntry(entry, cb)
+      }
+    }), cb)
+  }
+}
+
+function toArray (list) {
+  return Array.prototype.slice.call(list || [], 0)
+}
+
+},{"flatten":50,"run-parallel":57}],50:[function(require,module,exports){
+module.exports = function flatten(list, depth) {
+  depth = (typeof depth == 'number') ? depth : Infinity;
+
+  if (!depth) {
+    if (Array.isArray(list)) {
+      return list.map(function(i) { return i; });
+    }
+    return list;
+  }
+
+  return _flatten(list, 1);
+
+  function _flatten(list, d) {
+    return list.reduce(function (acc, item) {
+      if (Array.isArray(item) && d < depth) {
+        return acc.concat(_flatten(item, d + 1));
+      }
+      else {
+        return acc.concat(item);
+      }
+    }, []);
+  }
+};
+
+},{}],51:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.3.1
  * https://jquery.com/
@@ -16454,7 +19018,171 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],32:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
+var wildcard = require('wildcard');
+var reMimePartSplit = /[\/\+\.]/;
+
+/**
+  # mime-match
+
+  A simple function to checker whether a target mime type matches a mime-type
+  pattern (e.g. image/jpeg matches image/jpeg OR image/*).
+
+  ## Example Usage
+
+  <<< example.js
+
+**/
+module.exports = function(target, pattern) {
+  function test(pattern) {
+    var result = wildcard(pattern, target, reMimePartSplit);
+
+    // ensure that we have a valid mime type (should have two parts)
+    return result && result.length >= 2;
+  }
+
+  return pattern ? test(pattern.split(';')[0]) : test;
+};
+
+},{"wildcard":58}],53:[function(require,module,exports){
+/**
+* Create an event emitter with namespaces
+* @name createNamespaceEmitter
+* @example
+* var emitter = require('./index')()
+*
+* emitter.on('*', function () {
+*   console.log('all events emitted', this.event)
+* })
+*
+* emitter.on('example', function () {
+*   console.log('example event emitted')
+* })
+*/
+module.exports = function createNamespaceEmitter () {
+  var emitter = {}
+  var _fns = emitter._fns = {}
+
+  /**
+  * Emit an event. Optionally namespace the event. Handlers are fired in the order in which they were added with exact matches taking precedence. Separate the namespace and event with a `:`
+  * @name emit
+  * @param {String} event – the name of the event, with optional namespace
+  * @param {...*} data – up to 6 arguments that are passed to the event listener
+  * @example
+  * emitter.emit('example')
+  * emitter.emit('demo:test')
+  * emitter.emit('data', { example: true}, 'a string', 1)
+  */
+  emitter.emit = function emit (event, arg1, arg2, arg3, arg4, arg5, arg6) {
+    var toEmit = getListeners(event)
+
+    if (toEmit.length) {
+      emitAll(event, toEmit, [arg1, arg2, arg3, arg4, arg5, arg6])
+    }
+  }
+
+  /**
+  * Create en event listener.
+  * @name on
+  * @param {String} event
+  * @param {Function} fn
+  * @example
+  * emitter.on('example', function () {})
+  * emitter.on('demo', function () {})
+  */
+  emitter.on = function on (event, fn) {
+    if (!_fns[event]) {
+      _fns[event] = []
+    }
+
+    _fns[event].push(fn)
+  }
+
+  /**
+  * Create en event listener that fires once.
+  * @name once
+  * @param {String} event
+  * @param {Function} fn
+  * @example
+  * emitter.once('example', function () {})
+  * emitter.once('demo', function () {})
+  */
+  emitter.once = function once (event, fn) {
+    function one () {
+      fn.apply(this, arguments)
+      emitter.off(event, one)
+    }
+    this.on(event, one)
+  }
+
+  /**
+  * Stop listening to an event. Stop all listeners on an event by only passing the event name. Stop a single listener by passing that event handler as a callback.
+  * You must be explicit about what will be unsubscribed: `emitter.off('demo')` will unsubscribe an `emitter.on('demo')` listener,
+  * `emitter.off('demo:example')` will unsubscribe an `emitter.on('demo:example')` listener
+  * @name off
+  * @param {String} event
+  * @param {Function} [fn] – the specific handler
+  * @example
+  * emitter.off('example')
+  * emitter.off('demo', function () {})
+  */
+  emitter.off = function off (event, fn) {
+    var keep = []
+
+    if (event && fn) {
+      var fns = this._fns[event]
+      var i = 0
+      var l = fns ? fns.length : 0
+
+      for (i; i < l; i++) {
+        if (fns[i] !== fn) {
+          keep.push(fns[i])
+        }
+      }
+    }
+
+    keep.length ? this._fns[event] = keep : delete this._fns[event]
+  }
+
+  function getListeners (e) {
+    var out = _fns[e] ? _fns[e] : []
+    var idx = e.indexOf(':')
+    var args = (idx === -1) ? [e] : [e.substring(0, idx), e.substring(idx + 1)]
+
+    var keys = Object.keys(_fns)
+    var i = 0
+    var l = keys.length
+
+    for (i; i < l; i++) {
+      var key = keys[i]
+      if (key === '*') {
+        out = out.concat(_fns[key])
+      }
+
+      if (args.length === 2 && args[0] === key) {
+        out = out.concat(_fns[key])
+        break
+      }
+    }
+
+    return out
+  }
+
+  function emitAll (e, fns, args) {
+    var i = 0
+    var l = fns.length
+
+    for (i; i < l; i++) {
+      if (!fns[i]) break
+      fns[i].event = e
+      fns[i].apply(fns[i], args)
+    }
+  }
+
+  return emitter
+}
+
+},{}],54:[function(require,module,exports){
 /* @license
 Papa Parse
 v4.6.1
@@ -18263,4 +20991,598 @@ if (!Array.isArray)
 	return Papa;
 }));
 
-},{"stream":26}]},{},[30]);
+},{"stream":26}],55:[function(require,module,exports){
+!function() {
+    'use strict';
+    function h(nodeName, attributes) {
+        var lastSimple, child, simple, i, children = EMPTY_CHILDREN;
+        for (i = arguments.length; i-- > 2; ) stack.push(arguments[i]);
+        if (attributes && null != attributes.children) {
+            if (!stack.length) stack.push(attributes.children);
+            delete attributes.children;
+        }
+        while (stack.length) if ((child = stack.pop()) && void 0 !== child.pop) for (i = child.length; i--; ) stack.push(child[i]); else {
+            if ('boolean' == typeof child) child = null;
+            if (simple = 'function' != typeof nodeName) if (null == child) child = ''; else if ('number' == typeof child) child = String(child); else if ('string' != typeof child) simple = !1;
+            if (simple && lastSimple) children[children.length - 1] += child; else if (children === EMPTY_CHILDREN) children = [ child ]; else children.push(child);
+            lastSimple = simple;
+        }
+        var p = new VNode();
+        p.nodeName = nodeName;
+        p.children = children;
+        p.attributes = null == attributes ? void 0 : attributes;
+        p.key = null == attributes ? void 0 : attributes.key;
+        if (void 0 !== options.vnode) options.vnode(p);
+        return p;
+    }
+    function extend(obj, props) {
+        for (var i in props) obj[i] = props[i];
+        return obj;
+    }
+    function applyRef(ref, value) {
+        if (null != ref) if ('function' == typeof ref) ref(value); else ref.current = value;
+    }
+    function cloneElement(vnode, props) {
+        return h(vnode.nodeName, extend(extend({}, vnode.attributes), props), arguments.length > 2 ? [].slice.call(arguments, 2) : vnode.children);
+    }
+    function enqueueRender(component) {
+        if (!component.__d && (component.__d = !0) && 1 == items.push(component)) (options.debounceRendering || defer)(rerender);
+    }
+    function rerender() {
+        var p;
+        while (p = items.pop()) if (p.__d) renderComponent(p);
+    }
+    function isSameNodeType(node, vnode, hydrating) {
+        if ('string' == typeof vnode || 'number' == typeof vnode) return void 0 !== node.splitText;
+        if ('string' == typeof vnode.nodeName) return !node._componentConstructor && isNamedNode(node, vnode.nodeName); else return hydrating || node._componentConstructor === vnode.nodeName;
+    }
+    function isNamedNode(node, nodeName) {
+        return node.__n === nodeName || node.nodeName.toLowerCase() === nodeName.toLowerCase();
+    }
+    function getNodeProps(vnode) {
+        var props = extend({}, vnode.attributes);
+        props.children = vnode.children;
+        var defaultProps = vnode.nodeName.defaultProps;
+        if (void 0 !== defaultProps) for (var i in defaultProps) if (void 0 === props[i]) props[i] = defaultProps[i];
+        return props;
+    }
+    function createNode(nodeName, isSvg) {
+        var node = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', nodeName) : document.createElement(nodeName);
+        node.__n = nodeName;
+        return node;
+    }
+    function removeNode(node) {
+        var parentNode = node.parentNode;
+        if (parentNode) parentNode.removeChild(node);
+    }
+    function setAccessor(node, name, old, value, isSvg) {
+        if ('className' === name) name = 'class';
+        if ('key' === name) ; else if ('ref' === name) {
+            applyRef(old, null);
+            applyRef(value, node);
+        } else if ('class' === name && !isSvg) node.className = value || ''; else if ('style' === name) {
+            if (!value || 'string' == typeof value || 'string' == typeof old) node.style.cssText = value || '';
+            if (value && 'object' == typeof value) {
+                if ('string' != typeof old) for (var i in old) if (!(i in value)) node.style[i] = '';
+                for (var i in value) node.style[i] = 'number' == typeof value[i] && !1 === IS_NON_DIMENSIONAL.test(i) ? value[i] + 'px' : value[i];
+            }
+        } else if ('dangerouslySetInnerHTML' === name) {
+            if (value) node.innerHTML = value.__html || '';
+        } else if ('o' == name[0] && 'n' == name[1]) {
+            var useCapture = name !== (name = name.replace(/Capture$/, ''));
+            name = name.toLowerCase().substring(2);
+            if (value) {
+                if (!old) node.addEventListener(name, eventProxy, useCapture);
+            } else node.removeEventListener(name, eventProxy, useCapture);
+            (node.__l || (node.__l = {}))[name] = value;
+        } else if ('list' !== name && 'type' !== name && !isSvg && name in node) {
+            try {
+                node[name] = null == value ? '' : value;
+            } catch (e) {}
+            if ((null == value || !1 === value) && 'spellcheck' != name) node.removeAttribute(name);
+        } else {
+            var ns = isSvg && name !== (name = name.replace(/^xlink:?/, ''));
+            if (null == value || !1 === value) if (ns) node.removeAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase()); else node.removeAttribute(name); else if ('function' != typeof value) if (ns) node.setAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase(), value); else node.setAttribute(name, value);
+        }
+    }
+    function eventProxy(e) {
+        return this.__l[e.type](options.event && options.event(e) || e);
+    }
+    function flushMounts() {
+        var c;
+        while (c = mounts.shift()) {
+            if (options.afterMount) options.afterMount(c);
+            if (c.componentDidMount) c.componentDidMount();
+        }
+    }
+    function diff(dom, vnode, context, mountAll, parent, componentRoot) {
+        if (!diffLevel++) {
+            isSvgMode = null != parent && void 0 !== parent.ownerSVGElement;
+            hydrating = null != dom && !('__preactattr_' in dom);
+        }
+        var ret = idiff(dom, vnode, context, mountAll, componentRoot);
+        if (parent && ret.parentNode !== parent) parent.appendChild(ret);
+        if (!--diffLevel) {
+            hydrating = !1;
+            if (!componentRoot) flushMounts();
+        }
+        return ret;
+    }
+    function idiff(dom, vnode, context, mountAll, componentRoot) {
+        var out = dom, prevSvgMode = isSvgMode;
+        if (null == vnode || 'boolean' == typeof vnode) vnode = '';
+        if ('string' == typeof vnode || 'number' == typeof vnode) {
+            if (dom && void 0 !== dom.splitText && dom.parentNode && (!dom._component || componentRoot)) {
+                if (dom.nodeValue != vnode) dom.nodeValue = vnode;
+            } else {
+                out = document.createTextNode(vnode);
+                if (dom) {
+                    if (dom.parentNode) dom.parentNode.replaceChild(out, dom);
+                    recollectNodeTree(dom, !0);
+                }
+            }
+            out.__preactattr_ = !0;
+            return out;
+        }
+        var vnodeName = vnode.nodeName;
+        if ('function' == typeof vnodeName) return buildComponentFromVNode(dom, vnode, context, mountAll);
+        isSvgMode = 'svg' === vnodeName ? !0 : 'foreignObject' === vnodeName ? !1 : isSvgMode;
+        vnodeName = String(vnodeName);
+        if (!dom || !isNamedNode(dom, vnodeName)) {
+            out = createNode(vnodeName, isSvgMode);
+            if (dom) {
+                while (dom.firstChild) out.appendChild(dom.firstChild);
+                if (dom.parentNode) dom.parentNode.replaceChild(out, dom);
+                recollectNodeTree(dom, !0);
+            }
+        }
+        var fc = out.firstChild, props = out.__preactattr_, vchildren = vnode.children;
+        if (null == props) {
+            props = out.__preactattr_ = {};
+            for (var a = out.attributes, i = a.length; i--; ) props[a[i].name] = a[i].value;
+        }
+        if (!hydrating && vchildren && 1 === vchildren.length && 'string' == typeof vchildren[0] && null != fc && void 0 !== fc.splitText && null == fc.nextSibling) {
+            if (fc.nodeValue != vchildren[0]) fc.nodeValue = vchildren[0];
+        } else if (vchildren && vchildren.length || null != fc) innerDiffNode(out, vchildren, context, mountAll, hydrating || null != props.dangerouslySetInnerHTML);
+        diffAttributes(out, vnode.attributes, props);
+        isSvgMode = prevSvgMode;
+        return out;
+    }
+    function innerDiffNode(dom, vchildren, context, mountAll, isHydrating) {
+        var j, c, f, vchild, child, originalChildren = dom.childNodes, children = [], keyed = {}, keyedLen = 0, min = 0, len = originalChildren.length, childrenLen = 0, vlen = vchildren ? vchildren.length : 0;
+        if (0 !== len) for (var i = 0; i < len; i++) {
+            var _child = originalChildren[i], props = _child.__preactattr_, key = vlen && props ? _child._component ? _child._component.__k : props.key : null;
+            if (null != key) {
+                keyedLen++;
+                keyed[key] = _child;
+            } else if (props || (void 0 !== _child.splitText ? isHydrating ? _child.nodeValue.trim() : !0 : isHydrating)) children[childrenLen++] = _child;
+        }
+        if (0 !== vlen) for (var i = 0; i < vlen; i++) {
+            vchild = vchildren[i];
+            child = null;
+            var key = vchild.key;
+            if (null != key) {
+                if (keyedLen && void 0 !== keyed[key]) {
+                    child = keyed[key];
+                    keyed[key] = void 0;
+                    keyedLen--;
+                }
+            } else if (min < childrenLen) for (j = min; j < childrenLen; j++) if (void 0 !== children[j] && isSameNodeType(c = children[j], vchild, isHydrating)) {
+                child = c;
+                children[j] = void 0;
+                if (j === childrenLen - 1) childrenLen--;
+                if (j === min) min++;
+                break;
+            }
+            child = idiff(child, vchild, context, mountAll);
+            f = originalChildren[i];
+            if (child && child !== dom && child !== f) if (null == f) dom.appendChild(child); else if (child === f.nextSibling) removeNode(f); else dom.insertBefore(child, f);
+        }
+        if (keyedLen) for (var i in keyed) if (void 0 !== keyed[i]) recollectNodeTree(keyed[i], !1);
+        while (min <= childrenLen) if (void 0 !== (child = children[childrenLen--])) recollectNodeTree(child, !1);
+    }
+    function recollectNodeTree(node, unmountOnly) {
+        var component = node._component;
+        if (component) unmountComponent(component); else {
+            if (null != node.__preactattr_) applyRef(node.__preactattr_.ref, null);
+            if (!1 === unmountOnly || null == node.__preactattr_) removeNode(node);
+            removeChildren(node);
+        }
+    }
+    function removeChildren(node) {
+        node = node.lastChild;
+        while (node) {
+            var next = node.previousSibling;
+            recollectNodeTree(node, !0);
+            node = next;
+        }
+    }
+    function diffAttributes(dom, attrs, old) {
+        var name;
+        for (name in old) if ((!attrs || null == attrs[name]) && null != old[name]) setAccessor(dom, name, old[name], old[name] = void 0, isSvgMode);
+        for (name in attrs) if (!('children' === name || 'innerHTML' === name || name in old && attrs[name] === ('value' === name || 'checked' === name ? dom[name] : old[name]))) setAccessor(dom, name, old[name], old[name] = attrs[name], isSvgMode);
+    }
+    function createComponent(Ctor, props, context) {
+        var inst, i = recyclerComponents.length;
+        if (Ctor.prototype && Ctor.prototype.render) {
+            inst = new Ctor(props, context);
+            Component.call(inst, props, context);
+        } else {
+            inst = new Component(props, context);
+            inst.constructor = Ctor;
+            inst.render = doRender;
+        }
+        while (i--) if (recyclerComponents[i].constructor === Ctor) {
+            inst.__b = recyclerComponents[i].__b;
+            recyclerComponents.splice(i, 1);
+            return inst;
+        }
+        return inst;
+    }
+    function doRender(props, state, context) {
+        return this.constructor(props, context);
+    }
+    function setComponentProps(component, props, renderMode, context, mountAll) {
+        if (!component.__x) {
+            component.__x = !0;
+            component.__r = props.ref;
+            component.__k = props.key;
+            delete props.ref;
+            delete props.key;
+            if (void 0 === component.constructor.getDerivedStateFromProps) if (!component.base || mountAll) {
+                if (component.componentWillMount) component.componentWillMount();
+            } else if (component.componentWillReceiveProps) component.componentWillReceiveProps(props, context);
+            if (context && context !== component.context) {
+                if (!component.__c) component.__c = component.context;
+                component.context = context;
+            }
+            if (!component.__p) component.__p = component.props;
+            component.props = props;
+            component.__x = !1;
+            if (0 !== renderMode) if (1 === renderMode || !1 !== options.syncComponentUpdates || !component.base) renderComponent(component, 1, mountAll); else enqueueRender(component);
+            applyRef(component.__r, component);
+        }
+    }
+    function renderComponent(component, renderMode, mountAll, isChild) {
+        if (!component.__x) {
+            var rendered, inst, cbase, props = component.props, state = component.state, context = component.context, previousProps = component.__p || props, previousState = component.__s || state, previousContext = component.__c || context, isUpdate = component.base, nextBase = component.__b, initialBase = isUpdate || nextBase, initialChildComponent = component._component, skip = !1, snapshot = previousContext;
+            if (component.constructor.getDerivedStateFromProps) {
+                state = extend(extend({}, state), component.constructor.getDerivedStateFromProps(props, state));
+                component.state = state;
+            }
+            if (isUpdate) {
+                component.props = previousProps;
+                component.state = previousState;
+                component.context = previousContext;
+                if (2 !== renderMode && component.shouldComponentUpdate && !1 === component.shouldComponentUpdate(props, state, context)) skip = !0; else if (component.componentWillUpdate) component.componentWillUpdate(props, state, context);
+                component.props = props;
+                component.state = state;
+                component.context = context;
+            }
+            component.__p = component.__s = component.__c = component.__b = null;
+            component.__d = !1;
+            if (!skip) {
+                rendered = component.render(props, state, context);
+                if (component.getChildContext) context = extend(extend({}, context), component.getChildContext());
+                if (isUpdate && component.getSnapshotBeforeUpdate) snapshot = component.getSnapshotBeforeUpdate(previousProps, previousState);
+                var toUnmount, base, childComponent = rendered && rendered.nodeName;
+                if ('function' == typeof childComponent) {
+                    var childProps = getNodeProps(rendered);
+                    inst = initialChildComponent;
+                    if (inst && inst.constructor === childComponent && childProps.key == inst.__k) setComponentProps(inst, childProps, 1, context, !1); else {
+                        toUnmount = inst;
+                        component._component = inst = createComponent(childComponent, childProps, context);
+                        inst.__b = inst.__b || nextBase;
+                        inst.__u = component;
+                        setComponentProps(inst, childProps, 0, context, !1);
+                        renderComponent(inst, 1, mountAll, !0);
+                    }
+                    base = inst.base;
+                } else {
+                    cbase = initialBase;
+                    toUnmount = initialChildComponent;
+                    if (toUnmount) cbase = component._component = null;
+                    if (initialBase || 1 === renderMode) {
+                        if (cbase) cbase._component = null;
+                        base = diff(cbase, rendered, context, mountAll || !isUpdate, initialBase && initialBase.parentNode, !0);
+                    }
+                }
+                if (initialBase && base !== initialBase && inst !== initialChildComponent) {
+                    var baseParent = initialBase.parentNode;
+                    if (baseParent && base !== baseParent) {
+                        baseParent.replaceChild(base, initialBase);
+                        if (!toUnmount) {
+                            initialBase._component = null;
+                            recollectNodeTree(initialBase, !1);
+                        }
+                    }
+                }
+                if (toUnmount) unmountComponent(toUnmount);
+                component.base = base;
+                if (base && !isChild) {
+                    var componentRef = component, t = component;
+                    while (t = t.__u) (componentRef = t).base = base;
+                    base._component = componentRef;
+                    base._componentConstructor = componentRef.constructor;
+                }
+            }
+            if (!isUpdate || mountAll) mounts.push(component); else if (!skip) {
+                if (component.componentDidUpdate) component.componentDidUpdate(previousProps, previousState, snapshot);
+                if (options.afterUpdate) options.afterUpdate(component);
+            }
+            while (component.__h.length) component.__h.pop().call(component);
+            if (!diffLevel && !isChild) flushMounts();
+        }
+    }
+    function buildComponentFromVNode(dom, vnode, context, mountAll) {
+        var c = dom && dom._component, originalComponent = c, oldDom = dom, isDirectOwner = c && dom._componentConstructor === vnode.nodeName, isOwner = isDirectOwner, props = getNodeProps(vnode);
+        while (c && !isOwner && (c = c.__u)) isOwner = c.constructor === vnode.nodeName;
+        if (c && isOwner && (!mountAll || c._component)) {
+            setComponentProps(c, props, 3, context, mountAll);
+            dom = c.base;
+        } else {
+            if (originalComponent && !isDirectOwner) {
+                unmountComponent(originalComponent);
+                dom = oldDom = null;
+            }
+            c = createComponent(vnode.nodeName, props, context);
+            if (dom && !c.__b) {
+                c.__b = dom;
+                oldDom = null;
+            }
+            setComponentProps(c, props, 1, context, mountAll);
+            dom = c.base;
+            if (oldDom && dom !== oldDom) {
+                oldDom._component = null;
+                recollectNodeTree(oldDom, !1);
+            }
+        }
+        return dom;
+    }
+    function unmountComponent(component) {
+        if (options.beforeUnmount) options.beforeUnmount(component);
+        var base = component.base;
+        component.__x = !0;
+        if (component.componentWillUnmount) component.componentWillUnmount();
+        component.base = null;
+        var inner = component._component;
+        if (inner) unmountComponent(inner); else if (base) {
+            if (null != base.__preactattr_) applyRef(base.__preactattr_.ref, null);
+            component.__b = base;
+            removeNode(base);
+            recyclerComponents.push(component);
+            removeChildren(base);
+        }
+        applyRef(component.__r, null);
+    }
+    function Component(props, context) {
+        this.__d = !0;
+        this.context = context;
+        this.props = props;
+        this.state = this.state || {};
+        this.__h = [];
+    }
+    function render(vnode, parent, merge) {
+        return diff(merge, vnode, {}, !1, parent, !1);
+    }
+    function createRef() {
+        return {};
+    }
+    var VNode = function() {};
+    var options = {};
+    var stack = [];
+    var EMPTY_CHILDREN = [];
+    var defer = 'function' == typeof Promise ? Promise.resolve().then.bind(Promise.resolve()) : setTimeout;
+    var IS_NON_DIMENSIONAL = /acit|ex(?:s|g|n|p|$)|rph|ows|mnc|ntw|ine[ch]|zoo|^ord/i;
+    var items = [];
+    var mounts = [];
+    var diffLevel = 0;
+    var isSvgMode = !1;
+    var hydrating = !1;
+    var recyclerComponents = [];
+    extend(Component.prototype, {
+        setState: function(state, callback) {
+            if (!this.__s) this.__s = this.state;
+            this.state = extend(extend({}, this.state), 'function' == typeof state ? state(this.state, this.props) : state);
+            if (callback) this.__h.push(callback);
+            enqueueRender(this);
+        },
+        forceUpdate: function(callback) {
+            if (callback) this.__h.push(callback);
+            renderComponent(this, 2);
+        },
+        render: function() {}
+    });
+    var preact = {
+        h: h,
+        createElement: h,
+        cloneElement: cloneElement,
+        createRef: createRef,
+        Component: Component,
+        render: render,
+        rerender: rerender,
+        options: options
+    };
+    if ('undefined' != typeof module) module.exports = preact; else self.preact = preact;
+}();
+
+},{}],56:[function(require,module,exports){
+module.exports = prettierBytes
+
+function prettierBytes (num) {
+  if (typeof num !== 'number' || isNaN(num)) {
+    throw new TypeError('Expected a number, got ' + typeof num)
+  }
+
+  var neg = num < 0
+  var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+  if (neg) {
+    num = -num
+  }
+
+  if (num < 1) {
+    return (neg ? '-' : '') + num + ' B'
+  }
+
+  var exponent = Math.min(Math.floor(Math.log(num) / Math.log(1000)), units.length - 1)
+  num = Number(num / Math.pow(1000, exponent))
+  var unit = units[exponent]
+
+  if (num >= 10 || num % 1 === 0) {
+    // Do not show decimals when the number is two-digit, or if the number has no
+    // decimal component.
+    return (neg ? '-' : '') + num.toFixed(0) + ' ' + unit
+  } else {
+    return (neg ? '-' : '') + num.toFixed(1) + ' ' + unit
+  }
+}
+
+},{}],57:[function(require,module,exports){
+(function (process){
+module.exports = runParallel
+
+function runParallel (tasks, cb) {
+  var results, pending, keys
+  var isSync = true
+
+  if (Array.isArray(tasks)) {
+    results = []
+    pending = tasks.length
+  } else {
+    keys = Object.keys(tasks)
+    results = {}
+    pending = keys.length
+  }
+
+  function done (err) {
+    function end () {
+      if (cb) cb(err, results)
+      cb = null
+    }
+    if (isSync) process.nextTick(end)
+    else end()
+  }
+
+  function each (i, err, result) {
+    results[i] = result
+    if (--pending === 0 || err) {
+      done(err)
+    }
+  }
+
+  if (!pending) {
+    // empty
+    done(null)
+  } else if (keys) {
+    // object
+    keys.forEach(function (key) {
+      tasks[key](function (err, result) { each(key, err, result) })
+    })
+  } else {
+    // array
+    tasks.forEach(function (task, i) {
+      task(function (err, result) { each(i, err, result) })
+    })
+  }
+
+  isSync = false
+}
+
+}).call(this,require('_process'))
+},{"_process":11}],58:[function(require,module,exports){
+/* jshint node: true */
+'use strict';
+
+/**
+  # wildcard
+
+  Very simple wildcard matching, which is designed to provide the same
+  functionality that is found in the
+  [eve](https://github.com/adobe-webplatform/eve) eventing library.
+
+  ## Usage
+
+  It works with strings:
+
+  <<< examples/strings.js
+
+  Arrays:
+
+  <<< examples/arrays.js
+
+  Objects (matching against keys):
+
+  <<< examples/objects.js
+
+  While the library works in Node, if you are are looking for file-based
+  wildcard matching then you should have a look at:
+
+  <https://github.com/isaacs/node-glob>
+**/
+
+function WildcardMatcher(text, separator) {
+  this.text = text = text || '';
+  this.hasWild = ~text.indexOf('*');
+  this.separator = separator;
+  this.parts = text.split(separator);
+}
+
+WildcardMatcher.prototype.match = function(input) {
+  var matches = true;
+  var parts = this.parts;
+  var ii;
+  var partsCount = parts.length;
+  var testParts;
+
+  if (typeof input == 'string' || input instanceof String) {
+    if (!this.hasWild && this.text != input) {
+      matches = false;
+    } else {
+      testParts = (input || '').split(this.separator);
+      for (ii = 0; matches && ii < partsCount; ii++) {
+        if (parts[ii] === '*')  {
+          continue;
+        } else if (ii < testParts.length) {
+          matches = parts[ii] === testParts[ii];
+        } else {
+          matches = false;
+        }
+      }
+
+      // If matches, then return the component parts
+      matches = matches && testParts;
+    }
+  }
+  else if (typeof input.splice == 'function') {
+    matches = [];
+
+    for (ii = input.length; ii--; ) {
+      if (this.match(input[ii])) {
+        matches[matches.length] = input[ii];
+      }
+    }
+  }
+  else if (typeof input == 'object') {
+    matches = {};
+
+    for (var key in input) {
+      if (this.match(key)) {
+        matches[key] = input[key];
+      }
+    }
+  }
+
+  return matches;
+};
+
+module.exports = function(text, test, separator) {
+  var matcher = new WildcardMatcher(text, separator || /[\/\.]/);
+  if (typeof test != 'undefined') {
+    return matcher.match(test);
+  }
+
+  return matcher;
+};
+
+},{}]},{},[30]);

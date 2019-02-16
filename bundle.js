@@ -1,5 +1,8 @@
-let $ = require("jquery"); // eslint-disable-line
-let Papa = require('papaparse'); // eslint-disable-line
+// TODO: remove jquery?
+const $ = require("jquery"); // eslint-disable-line
+const Papa = require("papaparse"); // eslint-disable-line
+const Uppy = require("@uppy/core");
+const DragDrop = require("@uppy/drag-drop");
 // let bootstrap = require("bootstrap"); // eslint-disable-line
 
 // Declare universal
@@ -27,6 +30,49 @@ $( document ).ready(function() {
 
             // Read final file, then compose csv
             Papa.parse(files[files.length - 1], {
+                skipEmptyLines: true,
+                complete: finalFile,
+                error: errorFn,
+                download: false
+            });
+        }
+    });
+
+    // TODO: parameters
+    const uppyTwo = new Uppy({
+        debug: true,
+        autoProceed: false,
+        // allowedFileTypes: ".csv",
+        // minNumberOfFiles: 1
+    });
+
+    uppyTwo
+        .use(DragDrop, {target: "#UppyDragDrop-Two"});
+    // .use(Tus, {endpoint: 'https://master.tus.io/files/'})
+    // .use(ProgressBar, {target: '.UppyDragDrop-Two-Progress', hideAfterFinish: false})
+
+    var uploadBtn = document.querySelector(".UppyDragDrop-Two-Upload");
+    uploadBtn.addEventListener("click", function () {
+        let files = uppyTwo.getFiles();
+
+        // TODO: not necessary?
+        // Check for input
+        if (!files.length) {
+            alert("Please choose at least one file to parse.");
+        }
+        else {
+            // Read in nonfinal data
+            for (let i = 0; i < files.length - 1; i++) {
+                Papa.parse(files[i].data, {
+                    skipEmptyLines: true,
+                    complete: readData,
+                    error: errorFn,
+                    download: false
+                });
+            }
+
+            // Read final file, then compose csv
+            Papa.parse(files[files.length - 1].data, {
                 skipEmptyLines: true,
                 complete: finalFile,
                 error: errorFn,
